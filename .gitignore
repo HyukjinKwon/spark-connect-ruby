@@ -58,3 +58,6 @@ Gemfile.lock
 # Test / tooling caches
 .rspec_status
 .rubocop-cache/
+
+# Generated YARD API docs (built by the Docs workflow before the Pages build)
+docs/api/

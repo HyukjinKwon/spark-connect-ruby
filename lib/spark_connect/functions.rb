@@ -274,6 +274,547 @@ module SparkConnect
       raise NotImplementedError, "User-defined functions are not supported by the Ruby Spark Connect client"
     end
 
+    # The following functions are generated programmatically below
+    # (`UNIFORM` and `NO_ARG`). The `@!method` directives document them so they
+    # appear in the API reference; each returns a {Column}.
+    #
+    # @!method sum(*cols)
+    #   The Spark SQL `sum` function. String arguments are treated as column names.
+    #   @return [Column]
+    # @!method avg(*cols)
+    #   The Spark SQL `avg` function. String arguments are treated as column names.
+    #   @return [Column]
+    # @!method mean(*cols)
+    #   The Spark SQL `mean` function. String arguments are treated as column names.
+    #   @return [Column]
+    # @!method max(*cols)
+    #   The Spark SQL `max` function. String arguments are treated as column names.
+    #   @return [Column]
+    # @!method min(*cols)
+    #   The Spark SQL `min` function. String arguments are treated as column names.
+    #   @return [Column]
+    # @!method first(*cols)
+    #   The Spark SQL `first` function. String arguments are treated as column names.
+    #   @return [Column]
+    # @!method last(*cols)
+    #   The Spark SQL `last` function. String arguments are treated as column names.
+    #   @return [Column]
+    # @!method stddev(*cols)
+    #   The Spark SQL `stddev` function. String arguments are treated as column names.
+    #   @return [Column]
+    # @!method stddev_samp(*cols)
+    #   The Spark SQL `stddev_samp` function. String arguments are treated as column names.
+    #   @return [Column]
+    # @!method stddev_pop(*cols)
+    #   The Spark SQL `stddev_pop` function. String arguments are treated as column names.
+    #   @return [Column]
+    # @!method variance(*cols)
+    #   The Spark SQL `variance` function. String arguments are treated as column names.
+    #   @return [Column]
+    # @!method var_samp(*cols)
+    #   The Spark SQL `var_samp` function. String arguments are treated as column names.
+    #   @return [Column]
+    # @!method var_pop(*cols)
+    #   The Spark SQL `var_pop` function. String arguments are treated as column names.
+    #   @return [Column]
+    # @!method skewness(*cols)
+    #   The Spark SQL `skewness` function. String arguments are treated as column names.
+    #   @return [Column]
+    # @!method kurtosis(*cols)
+    #   The Spark SQL `kurtosis` function. String arguments are treated as column names.
+    #   @return [Column]
+    # @!method collect_list(*cols)
+    #   The Spark SQL `collect_list` function. String arguments are treated as column names.
+    #   @return [Column]
+    # @!method collect_set(*cols)
+    #   The Spark SQL `collect_set` function. String arguments are treated as column names.
+    #   @return [Column]
+    # @!method first_value(*cols)
+    #   The Spark SQL `first_value` function. String arguments are treated as column names.
+    #   @return [Column]
+    # @!method last_value(*cols)
+    #   The Spark SQL `last_value` function. String arguments are treated as column names.
+    #   @return [Column]
+    # @!method max_by(*cols)
+    #   The Spark SQL `max_by` function. String arguments are treated as column names.
+    #   @return [Column]
+    # @!method min_by(*cols)
+    #   The Spark SQL `min_by` function. String arguments are treated as column names.
+    #   @return [Column]
+    # @!method corr(*cols)
+    #   The Spark SQL `corr` function. String arguments are treated as column names.
+    #   @return [Column]
+    # @!method covar_pop(*cols)
+    #   The Spark SQL `covar_pop` function. String arguments are treated as column names.
+    #   @return [Column]
+    # @!method covar_samp(*cols)
+    #   The Spark SQL `covar_samp` function. String arguments are treated as column names.
+    #   @return [Column]
+    # @!method median(*cols)
+    #   The Spark SQL `median` function. String arguments are treated as column names.
+    #   @return [Column]
+    # @!method mode(*cols)
+    #   The Spark SQL `mode` function. String arguments are treated as column names.
+    #   @return [Column]
+    # @!method any_value(*cols)
+    #   The Spark SQL `any_value` function. String arguments are treated as column names.
+    #   @return [Column]
+    # @!method every(*cols)
+    #   The Spark SQL `every` function. String arguments are treated as column names.
+    #   @return [Column]
+    # @!method some(*cols)
+    #   The Spark SQL `some` function. String arguments are treated as column names.
+    #   @return [Column]
+    # @!method bit_and(*cols)
+    #   The Spark SQL `bit_and` function. String arguments are treated as column names.
+    #   @return [Column]
+    # @!method bit_or(*cols)
+    #   The Spark SQL `bit_or` function. String arguments are treated as column names.
+    #   @return [Column]
+    # @!method bit_xor(*cols)
+    #   The Spark SQL `bit_xor` function. String arguments are treated as column names.
+    #   @return [Column]
+    # @!method bool_and(*cols)
+    #   The Spark SQL `bool_and` function. String arguments are treated as column names.
+    #   @return [Column]
+    # @!method bool_or(*cols)
+    #   The Spark SQL `bool_or` function. String arguments are treated as column names.
+    #   @return [Column]
+    # @!method product(*cols)
+    #   The Spark SQL `product` function. String arguments are treated as column names.
+    #   @return [Column]
+    # @!method count_if(*cols)
+    #   The Spark SQL `count_if` function. String arguments are treated as column names.
+    #   @return [Column]
+    # @!method grouping(*cols)
+    #   The Spark SQL `grouping` function. String arguments are treated as column names.
+    #   @return [Column]
+    # @!method abs(*cols)
+    #   The Spark SQL `abs` function. String arguments are treated as column names.
+    #   @return [Column]
+    # @!method acos(*cols)
+    #   The Spark SQL `acos` function. String arguments are treated as column names.
+    #   @return [Column]
+    # @!method acosh(*cols)
+    #   The Spark SQL `acosh` function. String arguments are treated as column names.
+    #   @return [Column]
+    # @!method asin(*cols)
+    #   The Spark SQL `asin` function. String arguments are treated as column names.
+    #   @return [Column]
+    # @!method asinh(*cols)
+    #   The Spark SQL `asinh` function. String arguments are treated as column names.
+    #   @return [Column]
+    # @!method atan(*cols)
+    #   The Spark SQL `atan` function. String arguments are treated as column names.
+    #   @return [Column]
+    # @!method atanh(*cols)
+    #   The Spark SQL `atanh` function. String arguments are treated as column names.
+    #   @return [Column]
+    # @!method atan2(*cols)
+    #   The Spark SQL `atan2` function. String arguments are treated as column names.
+    #   @return [Column]
+    # @!method bin(*cols)
+    #   The Spark SQL `bin` function. String arguments are treated as column names.
+    #   @return [Column]
+    # @!method cbrt(*cols)
+    #   The Spark SQL `cbrt` function. String arguments are treated as column names.
+    #   @return [Column]
+    # @!method ceil(*cols)
+    #   The Spark SQL `ceil` function. String arguments are treated as column names.
+    #   @return [Column]
+    # @!method ceiling(*cols)
+    #   The Spark SQL `ceiling` function. String arguments are treated as column names.
+    #   @return [Column]
+    # @!method cos(*cols)
+    #   The Spark SQL `cos` function. String arguments are treated as column names.
+    #   @return [Column]
+    # @!method cosh(*cols)
+    #   The Spark SQL `cosh` function. String arguments are treated as column names.
+    #   @return [Column]
+    # @!method cot(*cols)
+    #   The Spark SQL `cot` function. String arguments are treated as column names.
+    #   @return [Column]
+    # @!method csc(*cols)
+    #   The Spark SQL `csc` function. String arguments are treated as column names.
+    #   @return [Column]
+    # @!method degrees(*cols)
+    #   The Spark SQL `degrees` function. String arguments are treated as column names.
+    #   @return [Column]
+    # @!method exp(*cols)
+    #   The Spark SQL `exp` function. String arguments are treated as column names.
+    #   @return [Column]
+    # @!method expm1(*cols)
+    #   The Spark SQL `expm1` function. String arguments are treated as column names.
+    #   @return [Column]
+    # @!method factorial(*cols)
+    #   The Spark SQL `factorial` function. String arguments are treated as column names.
+    #   @return [Column]
+    # @!method floor(*cols)
+    #   The Spark SQL `floor` function. String arguments are treated as column names.
+    #   @return [Column]
+    # @!method hypot(*cols)
+    #   The Spark SQL `hypot` function. String arguments are treated as column names.
+    #   @return [Column]
+    # @!method ln(*cols)
+    #   The Spark SQL `ln` function. String arguments are treated as column names.
+    #   @return [Column]
+    # @!method log(*cols)
+    #   The Spark SQL `log` function. String arguments are treated as column names.
+    #   @return [Column]
+    # @!method log2(*cols)
+    #   The Spark SQL `log2` function. String arguments are treated as column names.
+    #   @return [Column]
+    # @!method log10(*cols)
+    #   The Spark SQL `log10` function. String arguments are treated as column names.
+    #   @return [Column]
+    # @!method log1p(*cols)
+    #   The Spark SQL `log1p` function. String arguments are treated as column names.
+    #   @return [Column]
+    # @!method negative(*cols)
+    #   The Spark SQL `negative` function. String arguments are treated as column names.
+    #   @return [Column]
+    # @!method negate(*cols)
+    #   The Spark SQL `negate` function. String arguments are treated as column names.
+    #   @return [Column]
+    # @!method positive(*cols)
+    #   The Spark SQL `positive` function. String arguments are treated as column names.
+    #   @return [Column]
+    # @!method pow(*cols)
+    #   The Spark SQL `pow` function. String arguments are treated as column names.
+    #   @return [Column]
+    # @!method power(*cols)
+    #   The Spark SQL `power` function. String arguments are treated as column names.
+    #   @return [Column]
+    # @!method radians(*cols)
+    #   The Spark SQL `radians` function. String arguments are treated as column names.
+    #   @return [Column]
+    # @!method rint(*cols)
+    #   The Spark SQL `rint` function. String arguments are treated as column names.
+    #   @return [Column]
+    # @!method sec(*cols)
+    #   The Spark SQL `sec` function. String arguments are treated as column names.
+    #   @return [Column]
+    # @!method signum(*cols)
+    #   The Spark SQL `signum` function. String arguments are treated as column names.
+    #   @return [Column]
+    # @!method sin(*cols)
+    #   The Spark SQL `sin` function. String arguments are treated as column names.
+    #   @return [Column]
+    # @!method sinh(*cols)
+    #   The Spark SQL `sinh` function. String arguments are treated as column names.
+    #   @return [Column]
+    # @!method sqrt(*cols)
+    #   The Spark SQL `sqrt` function. String arguments are treated as column names.
+    #   @return [Column]
+    # @!method tan(*cols)
+    #   The Spark SQL `tan` function. String arguments are treated as column names.
+    #   @return [Column]
+    # @!method tanh(*cols)
+    #   The Spark SQL `tanh` function. String arguments are treated as column names.
+    #   @return [Column]
+    # @!method hex(*cols)
+    #   The Spark SQL `hex` function. String arguments are treated as column names.
+    #   @return [Column]
+    # @!method unhex(*cols)
+    #   The Spark SQL `unhex` function. String arguments are treated as column names.
+    #   @return [Column]
+    # @!method pmod(*cols)
+    #   The Spark SQL `pmod` function. String arguments are treated as column names.
+    #   @return [Column]
+    # @!method isnan(*cols)
+    #   The Spark SQL `isnan` function. String arguments are treated as column names.
+    #   @return [Column]
+    # @!method isnull(*cols)
+    #   The Spark SQL `isnull` function. String arguments are treated as column names.
+    #   @return [Column]
+    # @!method upper(*cols)
+    #   The Spark SQL `upper` function. String arguments are treated as column names.
+    #   @return [Column]
+    # @!method lower(*cols)
+    #   The Spark SQL `lower` function. String arguments are treated as column names.
+    #   @return [Column]
+    # @!method ltrim(*cols)
+    #   The Spark SQL `ltrim` function. String arguments are treated as column names.
+    #   @return [Column]
+    # @!method rtrim(*cols)
+    #   The Spark SQL `rtrim` function. String arguments are treated as column names.
+    #   @return [Column]
+    # @!method trim(*cols)
+    #   The Spark SQL `trim` function. String arguments are treated as column names.
+    #   @return [Column]
+    # @!method length(*cols)
+    #   The Spark SQL `length` function. String arguments are treated as column names.
+    #   @return [Column]
+    # @!method char_length(*cols)
+    #   The Spark SQL `char_length` function. String arguments are treated as column names.
+    #   @return [Column]
+    # @!method character_length(*cols)
+    #   The Spark SQL `character_length` function. String arguments are treated as column names.
+    #   @return [Column]
+    # @!method octet_length(*cols)
+    #   The Spark SQL `octet_length` function. String arguments are treated as column names.
+    #   @return [Column]
+    # @!method bit_length(*cols)
+    #   The Spark SQL `bit_length` function. String arguments are treated as column names.
+    #   @return [Column]
+    # @!method reverse(*cols)
+    #   The Spark SQL `reverse` function. String arguments are treated as column names.
+    #   @return [Column]
+    # @!method ascii(*cols)
+    #   The Spark SQL `ascii` function. String arguments are treated as column names.
+    #   @return [Column]
+    # @!method base64(*cols)
+    #   The Spark SQL `base64` function. String arguments are treated as column names.
+    #   @return [Column]
+    # @!method unbase64(*cols)
+    #   The Spark SQL `unbase64` function. String arguments are treated as column names.
+    #   @return [Column]
+    # @!method initcap(*cols)
+    #   The Spark SQL `initcap` function. String arguments are treated as column names.
+    #   @return [Column]
+    # @!method soundex(*cols)
+    #   The Spark SQL `soundex` function. String arguments are treated as column names.
+    #   @return [Column]
+    # @!method crc32(*cols)
+    #   The Spark SQL `crc32` function. String arguments are treated as column names.
+    #   @return [Column]
+    # @!method md5(*cols)
+    #   The Spark SQL `md5` function. String arguments are treated as column names.
+    #   @return [Column]
+    # @!method sha1(*cols)
+    #   The Spark SQL `sha1` function. String arguments are treated as column names.
+    #   @return [Column]
+    # @!method sha(*cols)
+    #   The Spark SQL `sha` function. String arguments are treated as column names.
+    #   @return [Column]
+    # @!method ucase(*cols)
+    #   The Spark SQL `ucase` function. String arguments are treated as column names.
+    #   @return [Column]
+    # @!method lcase(*cols)
+    #   The Spark SQL `lcase` function. String arguments are treated as column names.
+    #   @return [Column]
+    # @!method size(*cols)
+    #   The Spark SQL `size` function. String arguments are treated as column names.
+    #   @return [Column]
+    # @!method cardinality(*cols)
+    #   The Spark SQL `cardinality` function. String arguments are treated as column names.
+    #   @return [Column]
+    # @!method array_distinct(*cols)
+    #   The Spark SQL `array_distinct` function. String arguments are treated as column names.
+    #   @return [Column]
+    # @!method array_max(*cols)
+    #   The Spark SQL `array_max` function. String arguments are treated as column names.
+    #   @return [Column]
+    # @!method array_min(*cols)
+    #   The Spark SQL `array_min` function. String arguments are treated as column names.
+    #   @return [Column]
+    # @!method array_compact(*cols)
+    #   The Spark SQL `array_compact` function. String arguments are treated as column names.
+    #   @return [Column]
+    # @!method flatten(*cols)
+    #   The Spark SQL `flatten` function. String arguments are treated as column names.
+    #   @return [Column]
+    # @!method explode(*cols)
+    #   The Spark SQL `explode` function. String arguments are treated as column names.
+    #   @return [Column]
+    # @!method explode_outer(*cols)
+    #   The Spark SQL `explode_outer` function. String arguments are treated as column names.
+    #   @return [Column]
+    # @!method posexplode(*cols)
+    #   The Spark SQL `posexplode` function. String arguments are treated as column names.
+    #   @return [Column]
+    # @!method posexplode_outer(*cols)
+    #   The Spark SQL `posexplode_outer` function. String arguments are treated as column names.
+    #   @return [Column]
+    # @!method inline(*cols)
+    #   The Spark SQL `inline` function. String arguments are treated as column names.
+    #   @return [Column]
+    # @!method inline_outer(*cols)
+    #   The Spark SQL `inline_outer` function. String arguments are treated as column names.
+    #   @return [Column]
+    # @!method map_keys(*cols)
+    #   The Spark SQL `map_keys` function. String arguments are treated as column names.
+    #   @return [Column]
+    # @!method map_values(*cols)
+    #   The Spark SQL `map_values` function. String arguments are treated as column names.
+    #   @return [Column]
+    # @!method map_entries(*cols)
+    #   The Spark SQL `map_entries` function. String arguments are treated as column names.
+    #   @return [Column]
+    # @!method map_from_entries(*cols)
+    #   The Spark SQL `map_from_entries` function. String arguments are treated as column names.
+    #   @return [Column]
+    # @!method array_sort(*cols)
+    #   The Spark SQL `array_sort` function. String arguments are treated as column names.
+    #   @return [Column]
+    # @!method shuffle(*cols)
+    #   The Spark SQL `shuffle` function. String arguments are treated as column names.
+    #   @return [Column]
+    # @!method arrays_zip(*cols)
+    #   The Spark SQL `arrays_zip` function. String arguments are treated as column names.
+    #   @return [Column]
+    # @!method map_concat(*cols)
+    #   The Spark SQL `map_concat` function. String arguments are treated as column names.
+    #   @return [Column]
+    # @!method concat(*cols)
+    #   The Spark SQL `concat` function. String arguments are treated as column names.
+    #   @return [Column]
+    # @!method greatest(*cols)
+    #   The Spark SQL `greatest` function. String arguments are treated as column names.
+    #   @return [Column]
+    # @!method least(*cols)
+    #   The Spark SQL `least` function. String arguments are treated as column names.
+    #   @return [Column]
+    # @!method hash(*cols)
+    #   The Spark SQL `hash` function. String arguments are treated as column names.
+    #   @return [Column]
+    # @!method xxhash64(*cols)
+    #   The Spark SQL `xxhash64` function. String arguments are treated as column names.
+    #   @return [Column]
+    # @!method array_union(*cols)
+    #   The Spark SQL `array_union` function. String arguments are treated as column names.
+    #   @return [Column]
+    # @!method array_intersect(*cols)
+    #   The Spark SQL `array_intersect` function. String arguments are treated as column names.
+    #   @return [Column]
+    # @!method array_except(*cols)
+    #   The Spark SQL `array_except` function. String arguments are treated as column names.
+    #   @return [Column]
+    # @!method arrays_overlap(*cols)
+    #   The Spark SQL `arrays_overlap` function. String arguments are treated as column names.
+    #   @return [Column]
+    # @!method year(*cols)
+    #   The Spark SQL `year` function. String arguments are treated as column names.
+    #   @return [Column]
+    # @!method quarter(*cols)
+    #   The Spark SQL `quarter` function. String arguments are treated as column names.
+    #   @return [Column]
+    # @!method month(*cols)
+    #   The Spark SQL `month` function. String arguments are treated as column names.
+    #   @return [Column]
+    # @!method dayofmonth(*cols)
+    #   The Spark SQL `dayofmonth` function. String arguments are treated as column names.
+    #   @return [Column]
+    # @!method day(*cols)
+    #   The Spark SQL `day` function. String arguments are treated as column names.
+    #   @return [Column]
+    # @!method dayofweek(*cols)
+    #   The Spark SQL `dayofweek` function. String arguments are treated as column names.
+    #   @return [Column]
+    # @!method dayofyear(*cols)
+    #   The Spark SQL `dayofyear` function. String arguments are treated as column names.
+    #   @return [Column]
+    # @!method hour(*cols)
+    #   The Spark SQL `hour` function. String arguments are treated as column names.
+    #   @return [Column]
+    # @!method minute(*cols)
+    #   The Spark SQL `minute` function. String arguments are treated as column names.
+    #   @return [Column]
+    # @!method second(*cols)
+    #   The Spark SQL `second` function. String arguments are treated as column names.
+    #   @return [Column]
+    # @!method weekofyear(*cols)
+    #   The Spark SQL `weekofyear` function. String arguments are treated as column names.
+    #   @return [Column]
+    # @!method last_day(*cols)
+    #   The Spark SQL `last_day` function. String arguments are treated as column names.
+    #   @return [Column]
+    # @!method weekday(*cols)
+    #   The Spark SQL `weekday` function. String arguments are treated as column names.
+    #   @return [Column]
+    # @!method unix_date(*cols)
+    #   The Spark SQL `unix_date` function. String arguments are treated as column names.
+    #   @return [Column]
+    # @!method unix_micros(*cols)
+    #   The Spark SQL `unix_micros` function. String arguments are treated as column names.
+    #   @return [Column]
+    # @!method unix_millis(*cols)
+    #   The Spark SQL `unix_millis` function. String arguments are treated as column names.
+    #   @return [Column]
+    # @!method unix_seconds(*cols)
+    #   The Spark SQL `unix_seconds` function. String arguments are treated as column names.
+    #   @return [Column]
+    # @!method timestamp_seconds(*cols)
+    #   The Spark SQL `timestamp_seconds` function. String arguments are treated as column names.
+    #   @return [Column]
+    # @!method timestamp_millis(*cols)
+    #   The Spark SQL `timestamp_millis` function. String arguments are treated as column names.
+    #   @return [Column]
+    # @!method timestamp_micros(*cols)
+    #   The Spark SQL `timestamp_micros` function. String arguments are treated as column names.
+    #   @return [Column]
+    # @!method date_from_unix_date(*cols)
+    #   The Spark SQL `date_from_unix_date` function. String arguments are treated as column names.
+    #   @return [Column]
+    # @!method bitwise_not(*cols)
+    #   The Spark SQL `bitwise_not` function. String arguments are treated as column names.
+    #   @return [Column]
+    # @!method bit_count(*cols)
+    #   The Spark SQL `bit_count` function. String arguments are treated as column names.
+    #   @return [Column]
+    # @!method typeof(*cols)
+    #   The Spark SQL `typeof` function. String arguments are treated as column names.
+    #   @return [Column]
+    # @!method current_date
+    #   The Spark SQL `current_date` function (takes no arguments).
+    #   @return [Column]
+    # @!method current_timestamp
+    #   The Spark SQL `current_timestamp` function (takes no arguments).
+    #   @return [Column]
+    # @!method now
+    #   The Spark SQL `now` function (takes no arguments).
+    #   @return [Column]
+    # @!method current_timezone
+    #   The Spark SQL `current_timezone` function (takes no arguments).
+    #   @return [Column]
+    # @!method current_user
+    #   The Spark SQL `current_user` function (takes no arguments).
+    #   @return [Column]
+    # @!method current_catalog
+    #   The Spark SQL `current_catalog` function (takes no arguments).
+    #   @return [Column]
+    # @!method current_database
+    #   The Spark SQL `current_database` function (takes no arguments).
+    #   @return [Column]
+    # @!method current_schema
+    #   The Spark SQL `current_schema` function (takes no arguments).
+    #   @return [Column]
+    # @!method monotonically_increasing_id
+    #   The Spark SQL `monotonically_increasing_id` function (takes no arguments).
+    #   @return [Column]
+    # @!method spark_partition_id
+    #   The Spark SQL `spark_partition_id` function (takes no arguments).
+    #   @return [Column]
+    # @!method input_file_name
+    #   The Spark SQL `input_file_name` function (takes no arguments).
+    #   @return [Column]
+    # @!method input_file_block_start
+    #   The Spark SQL `input_file_block_start` function (takes no arguments).
+    #   @return [Column]
+    # @!method input_file_block_length
+    #   The Spark SQL `input_file_block_length` function (takes no arguments).
+    #   @return [Column]
+    # @!method version
+    #   The Spark SQL `version` function (takes no arguments).
+    #   @return [Column]
+    # @!method uuid
+    #   The Spark SQL `uuid` function (takes no arguments).
+    #   @return [Column]
+    # @!method row_number
+    #   The Spark SQL `row_number` function (takes no arguments).
+    #   @return [Column]
+    # @!method rank
+    #   The Spark SQL `rank` function (takes no arguments).
+    #   @return [Column]
+    # @!method dense_rank
+    #   The Spark SQL `dense_rank` function (takes no arguments).
+    #   @return [Column]
+    # @!method percent_rank
+    #   The Spark SQL `percent_rank` function (takes no arguments).
+    #   @return [Column]
+    # @!method cume_dist
+    #   The Spark SQL `cume_dist` function (takes no arguments).
+    #   @return [Column]
     # ---- Generated uniform functions --------------------------------------
     # Functions whose arguments are all ColumnOrName (a String denotes a column
     # name). Defined programmatically to keep the surface complete and compact.

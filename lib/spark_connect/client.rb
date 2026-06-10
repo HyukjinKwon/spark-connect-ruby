@@ -25,7 +25,10 @@ module SparkConnect
     #   @return [Array] observed (named) metrics.
     # @!attribute [r] sql_command_result
     #   @return [Spark::Connect::Relation, nil] relation produced by a SQL command.
-    ExecuteResult = Struct.new(:arrow_batches, :schema, :metrics, :observed_metrics, :sql_command_result, :row_count)
+    ExecuteResult = Struct.new(
+      :arrow_batches, :schema, :metrics, :observed_metrics, :sql_command_result, :row_count,
+      :write_stream_result, :streaming_query_result, :streaming_manager_result, :checkpoint_relation
+    )
 
     # @return [String] the client-side session id (UUID v4).
     attr_reader :session_id
@@ -160,6 +163,14 @@ module SparkConnect
         result.row_count += batch.row_count
       when :sql_command_result
         result.sql_command_result = resp.sql_command_result.relation
+      when :write_stream_operation_start_result
+        result.write_stream_result = resp.write_stream_operation_start_result
+      when :streaming_query_command_result
+        result.streaming_query_result = resp.streaming_query_command_result
+      when :streaming_query_manager_command_result
+        result.streaming_manager_result = resp.streaming_query_manager_command_result
+      when :checkpoint_command_result
+        result.checkpoint_relation = resp.checkpoint_command_result.relation
       end
     end
 

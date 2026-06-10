@@ -40,20 +40,22 @@ spark.stop
 
 ## What it supports
 
-`spark-connect` covers the batch DataFrame and SQL surface defined by the Spark
+`spark-connect` covers the DataFrame and SQL surface defined by the Spark
 Connect protocol: DataFrames and column expressions, the standard SQL function
 library, Spark SQL with parameters, reading and writing (CSV/JSON/Parquet/ORC/
 JDBC/tables), the catalog, runtime configuration, observations, a full typed
-schema system, and Apache Arrow result decoding -- all over a resilient gRPC
-client with TLS/bearer-token auth and automatic retries.
+schema system, **Structured Streaming** (streaming sources/sinks, triggers,
+output modes, watermarks, and a query manager), and Apache Arrow result
+decoding -- all over a resilient gRPC client with TLS/bearer-token auth and
+automatic retries.
 
 Method names are snake_case (idiomatic Ruby); the highest-traffic PySpark names
 also have camelCase aliases (`groupBy`, `withColumn`, `orderBy`,
 `createDataFrame`, ...) so PySpark snippets translate almost verbatim.
 
-Structured Streaming and user-defined functions (UDFs) are defined by the Spark
-Connect protocol but are **not yet implemented** by this client; they are on the
-roadmap.
+User-defined functions (UDFs) and the `foreach`/`foreachBatch` streaming sinks
+are **not yet supported**: their Spark Connect protobuf definitions are not yet
+finalized.
 
 ## Requirements
 
@@ -137,6 +139,26 @@ df.schema.simple_string  #=> "struct<name:string,dept:string,salary:bigint>"
 # SQL with parameters
 spark.sql("SELECT * FROM VALUES (1), (2), (3) AS t(x) WHERE x > :min", { min: 1 }).show
 ```
+
+## Structured Streaming
+
+```ruby
+stream = spark.read_stream.format("rate").option("rowsPerSecond", 10).load
+
+query = stream.write_stream
+              .format("memory")
+              .query_name("rates")
+              .output_mode("append")
+              .trigger(processing_time: "1 second")
+              .start
+
+query.active?            #=> true
+query.recent_progress    #=> [ {parsed progress JSON}, ... ]
+spark.streams.active     #=> [#<SparkConnect::StreamingQuery ...>]
+query.stop
+```
+
+See the [Structured Streaming guide](https://hyukjinkwon.github.io/spark-connect-ruby/streaming.html) for triggers, sinks, watermarks, and the query manager.
 
 ## Documentation
 

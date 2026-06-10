@@ -41,7 +41,17 @@ module SpecHelpers
 
     def execute_command(command)
       @executed_commands << command
-      build_result
+      result = build_result
+      case command.command_type
+      when :write_stream_operation_start
+        result.write_stream_result = Proto::WriteStreamOperationStartResult.new(
+          query_id: Proto::StreamingQueryInstanceId.new(id: "test-query-id", run_id: "test-run-id"),
+          name: command.write_stream_operation_start.query_name
+        )
+      when :checkpoint_command
+        result.checkpoint_relation = Proto::CachedRemoteRelation.new(relation_id: "test-relation-id")
+      end
+      result
     end
 
     def analyze(**kw)

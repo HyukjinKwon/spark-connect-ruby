@@ -97,6 +97,17 @@ module SparkConnect
       DataFrameReader.new(self)
     end
 
+    # @return [DataStreamReader] interface for loading a streaming DataFrame.
+    def read_stream
+      DataStreamReader.new(self)
+    end
+    alias readStream read_stream
+
+    # @return [StreamingQueryManager] the manager for this session's streaming queries.
+    def streams
+      StreamingQueryManager.new(self)
+    end
+
     # Build a {DataFrame} from local Ruby data.
     #
     # @param data [Array<Hash>, Array<Array>, Array<Row>]

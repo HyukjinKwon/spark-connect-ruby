@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Structured Streaming**: `SparkSession#read_stream` (`DataStreamReader`),
+  `DataFrame#write_stream` (`DataStreamWriter`), `StreamingQuery` (status,
+  recent/last progress, await_termination, process_all_available, stop,
+  exception, explain), and `SparkSession#streams` (`StreamingQueryManager`:
+  active, get, await_any_termination, reset_terminated). Supports triggers
+  (processing-time, once, available-now, continuous), output modes, and
+  file/console/memory/Kafka sinks. (`foreach`/`foreachBatch` and UDFs remain
+  unsupported pending finalized protobuf definitions.)
+- `DataFrame#with_watermark` for event-time watermarks on streaming DataFrames.
+- `DataFrame#repartition_by_range`, `DataFrame#checkpoint` /
+  `DataFrame#local_checkpoint`, and `DataFrame#transform`.
+
 ## [0.1.0] - 2026-06-10
 
 Initial release.

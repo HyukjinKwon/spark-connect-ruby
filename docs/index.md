@@ -50,6 +50,7 @@ This gem is that client for Ruby.
 - **Typed schemas** under `SparkConnect::Types::*`, with DDL strings and `print_schema`.
 - **Arrow-based decoding** of results into `Row` objects (or a columnar `Arrow::Table`).
 - **Catalog**, **reader/writer**, **NA & stat helpers**, **observations**, and **window specs**.
+- **Structured Streaming**: streaming sources/sinks, triggers, output modes, watermarks, and a query manager.
 
 ## Install
 
@@ -99,5 +100,7 @@ spark.stop
 | [Columns & Functions]({{ "/columns-and-functions.html" | relative_url }}) | Expressions and the `F` library |
 | [Aggregations & Windows]({{ "/aggregations-and-windows.html" | relative_url }}) | `group_by`, pivot, and analytic windows |
 | [Reading & Writing]({{ "/reading-and-writing.html" | relative_url }}) | Sources, sinks, and tables |
+| [Structured Streaming]({{ "/streaming.html" | relative_url }}) | Streaming sources/sinks, triggers, query management |
 | [Types & Schemas]({{ "/types-and-schemas.html" | relative_url }}) | The type system and value mapping |
 | [Configuration & Errors]({{ "/configuration.html" | relative_url }}) | Runtime config, observations, error handling |
+| [API reference](https://hyukjinkwon.github.io/spark-connect-ruby/api/index.html) | Full YARD method-level documentation |

@@ -348,6 +348,30 @@ module SparkConnect
       build(repartition: Proto::Repartition.new(input: @relation, num_partitions: num_partitions, shuffle: false))
     end
 
+    # Range-partition by the given columns (rows are range-partitioned on the
+    # sort order of the columns).
+    #
+    # @overload repartition_by_range(*cols)
+    # @overload repartition_by_range(num_partitions, *cols)
+    # @return [DataFrame]
+    def repartition_by_range(*args)
+      num_partitions = args.first.is_a?(Integer) ? args.shift : nil
+      orders = normalize_columns(args).map do |c|
+        expr = c.to_expr
+        if expr.expr_type == :sort_order
+          expr
+        else
+          Proto::Expression.new(sort_order: Proto::Expression::SortOrder.new(
+            child: expr, direction: :SORT_DIRECTION_ASCENDING, null_ordering: :SORT_NULLS_FIRST
+          ))
+        end
+      end
+      rbe = Proto::RepartitionByExpression.new(input: @relation, partition_exprs: orders)
+      rbe.num_partitions = num_partitions if num_partitions
+      build(repartition_by_expression: rbe)
+    end
+    alias repartitionByRange repartition_by_range
+
     # ---- Sampling ----------------------------------------------------------
 
     # Random sample of rows.
@@ -425,6 +449,54 @@ module SparkConnect
       DataFrameWriterV2.new(self, table)
     end
     alias writeTo write_to
+
+    # @return [DataStreamWriter] interface for starting a streaming query from
+    #   this (streaming) DataFrame.
+    def write_stream
+      DataStreamWriter.new(self)
+    end
+    alias writeStream write_stream
+
+    # Define an event-time watermark for late-data handling on a streaming
+    # DataFrame.
+    #
+    # @param event_time [String] the event-time column name.
+    # @param delay_threshold [String] e.g. `"10 minutes"`.
+    # @return [DataFrame]
+    def with_watermark(event_time, delay_threshold)
+      build(with_watermark: Proto::WithWatermark.new(
+        input: @relation, event_time: event_time.to_s, delay_threshold: delay_threshold.to_s
+      ))
+    end
+    alias withWatermark with_watermark
+
+    # Apply a function to this DataFrame and return its result, enabling a
+    # fluent chain of custom transformations.
+    #
+    # @yieldparam df [DataFrame] self
+    # @return [DataFrame] whatever the block returns
+    def transform
+      yield(self)
+    end
+
+    # Eagerly checkpoint this DataFrame: materialise it server-side and return a
+    # new DataFrame backed by the cached result (truncates the logical plan).
+    #
+    # @param eager [Boolean] materialise immediately.
+    # @return [DataFrame]
+    def checkpoint(eager: true)
+      checkpoint_command(local: false, eager: eager)
+    end
+
+    # Like {#checkpoint} but uses the executors' local storage (no reliable
+    # storage), which is faster but not fault-tolerant.
+    #
+    # @param eager [Boolean]
+    # @return [DataFrame]
+    def local_checkpoint(eager: true)
+      checkpoint_command(local: true, eager: eager)
+    end
+    alias localCheckpoint local_checkpoint
 
     # Observe named metrics over this DataFrame.
     #
@@ -643,6 +715,19 @@ module SparkConnect
 
     def analyze(**kw)
       @session.client.analyze(**kw)
+    end
+
+    def checkpoint_command(local:, eager:)
+      cmd = Proto::CheckpointCommand.new(relation: @relation, local: local, eager: eager)
+      result = @session.client.execute_command(Proto::Command.new(checkpoint_command: cmd))
+      cached = result.checkpoint_relation
+      raise SparkConnectError, "Server did not return a checkpointed relation" unless cached
+
+      relation = Proto::Relation.new(
+        common: Proto::RelationCommon.new(plan_id: @session.next_plan_id),
+        cached_remote_relation: Proto::CachedRemoteRelation.new(relation_id: cached.relation_id)
+      )
+      DataFrame.new(@session, relation)
     end
 
     def normalize_columns(cols)
