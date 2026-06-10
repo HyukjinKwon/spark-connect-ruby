@@ -134,26 +134,6 @@ df.schema.simple_string  #=> "struct<name:string,dept:string,salary:bigint>"
 spark.sql("SELECT * FROM VALUES (1), (2), (3) AS t(x) WHERE x > :min", { min: 1 }).show
 ```
 
-## Structured Streaming
-
-```ruby
-stream = spark.read_stream.format("rate").option("rowsPerSecond", 10).load
-
-query = stream.write_stream
-              .format("memory")
-              .query_name("rates")
-              .output_mode("append")
-              .trigger(processing_time: "1 second")
-              .start
-
-query.active?            #=> true
-query.recent_progress    #=> [ {parsed progress JSON}, ... ]
-spark.streams.active     #=> [#<SparkConnect::StreamingQuery ...>]
-query.stop
-```
-
-See the [Structured Streaming guide](https://hyukjinkwon.github.io/spark-connect-ruby/streaming.html) for triggers, sinks, watermarks, and the query manager.
-
 ## Documentation
 
 Full documentation, including guides for every part of the API, lives at
