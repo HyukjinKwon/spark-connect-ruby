@@ -104,19 +104,22 @@ server runs.
 
    ```bash
    mkdir -p ~/spark
-   curl -fsSL "https://archive.apache.org/dist/spark/spark-4.0.0/spark-4.0.0-bin-hadoop3.tgz" \
+   curl -fsSL "https://archive.apache.org/dist/spark/spark-4.1.0/spark-4.1.0-bin-hadoop3.tgz" \
      | tar xz -C ~/spark --strip-components=1
    ```
 
 2. **Start the Connect server.** The `sbin/start-connect-server.sh` script
-   launches the gRPC endpoint, by default on port **15002**. Pass the matching
-   Spark Connect package for your Spark version:
+   launches the gRPC endpoint, by default on port **15002**. Spark 4.0.0+
+   bundles the Connect server, so no extra packages are needed:
 
    ```bash
    ~/spark/sbin/start-connect-server.sh \
-     --packages "org.apache.spark:spark-connect_2.13:4.1.0" \
      --conf spark.log.level=WARN
    ```
+
+   On **Spark 3.5.x** the Connect server is not bundled; pull it in with
+   `--packages "org.apache.spark:spark-connect_2.13:3.5.5"` (use a Scala 2.13
+   distribution).
 
 3. **Confirm it is listening** on the gRPC port:
 
