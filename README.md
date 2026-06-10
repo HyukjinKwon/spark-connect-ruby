@@ -81,7 +81,7 @@ curl -fsSL https://archive.apache.org/dist/spark/spark-4.1.0/spark-4.1.0-bin-had
 cd spark-4.1.0-bin-hadoop3
 
 # Start the Connect server (requires Java 17+)
-./sbin/start-connect-server.sh --jars "$(pwd)/jars/spark-connect_2.13-4.1.0.jar"
+./sbin/start-connect-server.sh --packages "org.apache.spark:spark-connect_2.13:4.1.0"
 ```
 
 The server listens on `sc://localhost:15002` by default.
