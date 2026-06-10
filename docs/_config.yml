@@ -1,0 +1,50 @@
+title: spark-connect (Ruby)
+description: >-
+  A production-ready, pure-Ruby client for Apache Spark Connect (gRPC),
+  with a DataFrame API closely mirroring PySpark.
+
+# GitHub Pages serves this project site under /spark-connect-ruby.
+baseurl: "/spark-connect-ruby"
+url: "https://hyukjinkwon.github.io"
+
+# just-the-docs, pulled at build time so the site renders on GitHub Pages.
+remote_theme: just-the-docs/just-the-docs
+
+plugins:
+  - jekyll-remote-theme
+
+# Theme options.
+color_scheme: dark
+
+# Full-text search across all pages.
+search_enabled: true
+search:
+  heading_level: 2
+  previews: 3
+  tokenizer_separator: /[\s/]+/
+
+# Links shown in the top-right of every page.
+aux_links:
+  "spark-connect-ruby on GitHub":
+    - "https://github.com/HyukjinKwon/spark-connect-ruby"
+aux_links_new_tab: true
+
+# Footer.
+footer_content: >-
+  Apache Spark, Spark, and the Spark logo are trademarks of the
+  Apache Software Foundation. Licensed under Apache-2.0.
+
+# A "view on GitHub" / "edit this page" affordance.
+gh_edit_link: true
+gh_edit_link_text: "Edit this page on GitHub"
+gh_edit_repository: "https://github.com/HyukjinKwon/spark-connect-ruby"
+gh_edit_branch: "main"
+gh_edit_source: docs
+gh_edit_view_mode: "tree"
+
+# Exclude the generated YARD API output and Jekyll plumbing from the build.
+exclude:
+  - api/
+  - Gemfile
+  - Gemfile.lock
+  - vendor/

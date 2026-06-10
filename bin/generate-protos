@@ -1,0 +1,46 @@
+#!/usr/bin/env bash
+# Regenerate the Ruby protobuf + gRPC stubs from the Spark Connect .proto files.
+#
+# The generated sources live under lib/spark_connect/proto and ARE committed to
+# the repository so that installing the gem does not require a protobuf compiler.
+# Run this script only when bumping the vendored Spark Connect protocol version.
+#
+# Usage: bin/generate-protos [SPARK_REF]
+#   SPARK_REF defaults to the version recorded in PROTO_VERSION.
+set -euo pipefail
+
+cd "$(dirname "$0")/.."
+
+SPARK_REF="${1:-$(cat PROTO_VERSION 2>/dev/null || echo v4.0.0)}"
+PROTO_DIR="proto"
+OUT_DIR="lib/spark_connect/proto"
+BASE_URL="https://raw.githubusercontent.com/apache/spark/${SPARK_REF}/sql/connect/common/src/main/protobuf/spark/connect"
+
+PROTOS=(base catalog commands common expressions ml ml_common relations types)
+
+echo "==> Spark Connect protocol ref: ${SPARK_REF}"
+mkdir -p "${PROTO_DIR}/spark/connect" "${OUT_DIR}"
+
+echo "==> Downloading .proto sources"
+for f in "${PROTOS[@]}"; do
+  curl -fsSL "${BASE_URL}/${f}.proto" -o "${PROTO_DIR}/spark/connect/${f}.proto"
+  echo "    fetched ${f}.proto"
+done
+
+# Resolve the protoc plugin shipped with the grpc-tools gem.
+PROTOC_BIN="$(gem contents grpc-tools | grep -E '/bin/grpc_tools_ruby_protoc$' | head -1)"
+if [[ -z "${PROTOC_BIN}" ]]; then
+  echo "grpc-tools gem not found. Run: gem install grpc-tools" >&2
+  exit 1
+fi
+
+echo "==> Generating Ruby sources -> ${OUT_DIR}"
+"${PROTOC_BIN}" \
+  -I "${PROTO_DIR}" \
+  --ruby_out="${OUT_DIR}" \
+  --grpc_out="${OUT_DIR}" \
+  $(printf "${PROTO_DIR}/spark/connect/%s.proto " "${PROTOS[@]}")
+
+echo "${SPARK_REF}" > PROTO_VERSION
+echo "==> Done. Generated:"
+find "${OUT_DIR}" -name '*_pb.rb' | sort | sed 's/^/    /'

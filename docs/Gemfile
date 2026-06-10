@@ -1,0 +1,14 @@
+# frozen_string_literal: true
+
+source "https://rubygems.org"
+
+# Build the documentation site with the exact toolchain GitHub Pages runs.
+# `github-pages` pins Jekyll and every supported plugin to versions GitHub
+# Pages uses in production, so a local `bundle exec jekyll build` matches what
+# is published.
+group :jekyll_plugins do
+  gem "github-pages"
+
+  # Required to pull the `just-the-docs` theme via `remote_theme:` at build time.
+  gem "jekyll-remote-theme"
+end

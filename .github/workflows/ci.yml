@@ -1,0 +1,114 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint:
+    name: RuboCop
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: "3.3"
+          bundler-cache: true
+      - run: bundle exec rubocop --parallel
+
+  test:
+    name: Unit specs (Ruby ${{ matrix.ruby }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        ruby: ["3.1", "3.2", "3.3", "3.4"]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Apache Arrow (GLib) system libraries
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y -V ca-certificates lsb-release wget
+          wget "https://apache.jfrog.io/artifactory/arrow/$(lsb_release --id --short | tr 'A-Z' 'a-z')/apache-arrow-apt-source-latest-$(lsb_release --codename --short).deb"
+          sudo apt-get install -y -V "./apache-arrow-apt-source-latest-$(lsb_release --codename --short).deb"
+          sudo apt-get update
+          sudo apt-get install -y -V libarrow-glib-dev libparquet-glib-dev
+
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: ${{ matrix.ruby }}
+          bundler-cache: true
+
+      - name: Run unit specs
+        run: bundle exec rake spec
+
+  integration:
+    name: Integration (live Spark Connect ${{ matrix.spark }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        spark: ["4.0.0", "3.5.5"]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Apache Arrow (GLib) system libraries
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y -V ca-certificates lsb-release wget
+          wget "https://apache.jfrog.io/artifactory/arrow/$(lsb_release --id --short | tr 'A-Z' 'a-z')/apache-arrow-apt-source-latest-$(lsb_release --codename --short).deb"
+          sudo apt-get install -y -V "./apache-arrow-apt-source-latest-$(lsb_release --codename --short).deb"
+          sudo apt-get update
+          sudo apt-get install -y -V libarrow-glib-dev libparquet-glib-dev
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: "3.3"
+          bundler-cache: true
+
+      - name: Cache Spark distribution
+        id: spark-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/spark
+          key: spark-${{ matrix.spark }}
+
+      - name: Download Spark
+        if: steps.spark-cache.outputs.cache-hit != 'true'
+        run: |
+          mkdir -p ~/spark
+          curl -fsSL "https://archive.apache.org/dist/spark/spark-${{ matrix.spark }}/spark-${{ matrix.spark }}-bin-hadoop3.tgz" \
+            | tar xz -C ~/spark --strip-components=1
+
+      - name: Start Spark Connect server
+        run: |
+          export SPARK_NO_DAEMONIZE=0
+          ~/spark/sbin/start-connect-server.sh \
+            --packages "org.apache.spark:spark-connect_2.13:${{ matrix.spark }}" \
+            --conf spark.log.level=WARN
+          # Wait for the gRPC port to accept connections.
+          for i in $(seq 1 60); do
+            if bash -c "</dev/tcp/localhost/15002" 2>/dev/null; then echo "Spark Connect up"; break; fi
+            sleep 2
+          done
+
+      - name: Run integration specs
+        env:
+          SPARK_REMOTE: "sc://localhost:15002"
+        run: bundle exec rspec spec/integration --format documentation
+
+      - name: Dump server log on failure
+        if: failure()
+        run: tail -n 200 ~/spark/logs/*.out || true

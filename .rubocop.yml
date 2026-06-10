@@ -1,0 +1,120 @@
+plugins:
+  - rubocop-rspec
+
+AllCops:
+  TargetRubyVersion: 3.1
+  NewCops: enable
+  SuggestExtensions: false
+  Exclude:
+    # Generated protobuf / gRPC stubs are machine-authored.
+    - "lib/spark_connect/proto/**/*"
+    - "vendor/**/*"
+    - "tmp/**/*"
+    - "examples/**/*" # examples favour readability over lint strictness
+
+# This is a DSL that intentionally mirrors PySpark; method/class sizes and the
+# breadth of the public surface make granular metric limits counterproductive.
+Metrics:
+  Enabled: false
+
+# The DataFrame DSL deliberately overrides operators and uses long method lists,
+# short mathematical parameter names, and camelCase PySpark aliases.
+Style/Documentation:
+  # Many classes are reopened across files (e.g. DataFrame gains describe/summary
+  # in stat_functions.rb); requiring a doc comment on each reopening is noise.
+  Enabled: false
+Style/AccessModifierDeclarations:
+  Enabled: false
+Style/AsciiComments:
+  Enabled: false # we use a few typographic characters in prose comments
+Style/OptionalBooleanParameter:
+  # Positional boolean options (e.g. sort_array(col, asc = true)) mirror PySpark.
+  Enabled: false
+Style/ModuleFunction:
+  # Functions/Types use `extend self` / `module_function` deliberately.
+  Enabled: false
+Naming/MethodName:
+  # camelCase aliases (groupBy, withColumn, ...) are intentional for PySpark parity.
+  Enabled: false
+Naming/MethodParameterName:
+  # Short names (n, c, df, v, e) are idiomatic in this column/DataFrame DSL.
+  Enabled: false
+Naming/PredicateMethod:
+  Enabled: false
+Naming/PredicatePrefix:
+  Enabled: false
+Naming/AccessorMethodName:
+  Enabled: false
+Naming/FileName:
+  # lib/spark-connect.rb is the gem-named entry point.
+  Exclude:
+    - "lib/spark-connect.rb"
+Naming/MemoizedInstanceVariableName:
+  Enabled: false
+Lint/UnusedMethodArgument:
+  Enabled: false
+Lint/UselessConstantScoping:
+  Enabled: false
+
+Layout/LineLength:
+  Max: 140
+  AllowedPatterns:
+    - "^\\s*#" # don't penalise long doc comment lines
+
+Style/FrozenStringLiteralComment:
+  Enabled: true
+Style/StringLiterals:
+  EnforcedStyle: double_quotes
+Style/TrailingCommaInArrayLiteral:
+  EnforcedStyleForMultiline: consistent_comma
+Style/TrailingCommaInHashLiteral:
+  EnforcedStyleForMultiline: consistent_comma
+
+# RSpec tweaks: integration-style specs and DSL specs get long.
+RSpec/ExampleLength:
+  Enabled: false
+RSpec/MultipleExpectations:
+  Enabled: false
+RSpec/MultipleMemoizedHelpers:
+  Enabled: false
+RSpec/NestedGroups:
+  Max: 5
+RSpec/DescribeClass:
+  Enabled: false
+RSpec/MessageSpies:
+  Enabled: false
+RSpec/VerifiedDoubles:
+  Enabled: false
+RSpec/StubbedMock:
+  Enabled: false
+RSpec/ExpectInHook:
+  Enabled: false
+Style/RedundantFormat:
+  # False positives: DataFrameReader/Writer define their own `#format` method
+  # (the data source format), which this cop confuses with Kernel#format.
+  Enabled: false
+
+# --- Spec-layout conventions used by this project's suite ---
+RSpec/SpecFilePathFormat:
+  Enabled: false # specs live flat under spec/, not spec/spark_connect/
+RSpec/LeakyConstantDeclaration:
+  Enabled: false # e.g. `T = SparkConnect::Types` inside a describe is a local shorthand
+Lint/ConstantDefinitionInBlock:
+  Exclude:
+    - "spec/**/*"
+RSpec/BeforeAfterAll:
+  Enabled: false # integration specs share one live session via before(:all)
+RSpec/InstanceVariable:
+  Enabled: false
+RSpec/MultipleDescribes:
+  Enabled: false
+RSpec/IdenticalEqualityAssertion:
+  Enabled: false # some specs deliberately assert reflexive equality
+Lint/BinaryOperatorWithIdenticalOperands:
+  Exclude:
+    - "spec/**/*" # specs deliberately exercise self-comparison (e.g. col == col)
+Style/EvenOdd:
+  # The Column DSL uses `(col % 2) == 0`; rewriting to `.even?` is invalid on a Column.
+  Exclude:
+    - "spec/**/*"
+    - "examples/**/*"

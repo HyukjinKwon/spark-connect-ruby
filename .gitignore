@@ -1,0 +1,60 @@
+# --- Local-only agent / coordination artifacts (never published) ---
+# All inter-agent communication and planning lives under .build/ and is
+# deliberately kept out of the published repository.
+.build/
+.hjk_work/
+NOTES/
+team/
+
+# Working notes are local-only. Only README.md and the docs/ sources are
+# tracked markdown; use `git add -f` to deliberately track another .md file.
+*.md
+!README.md
+!CONTRIBUTING.md
+!CODE_OF_CONDUCT.md
+!CHANGELOG.md
+!SECURITY.md
+!docs/**/*.md
+!examples/**/*.md
+!.github/**/*.md
+
+# --- Ruby ---
+*.gem
+*.rbc
+/.config
+/coverage/
+/InstalledFiles
+/pkg/
+/spec/reports/
+/spec/examples.txt
+/test/tmp/
+/test/version_tmp/
+/tmp/
+.byebug_history
+
+# Bundler / RubyGems
+/.bundle/
+/vendor/bundle
+/lib/bundler/man/
+Gemfile.lock
+.ruby-version
+.ruby-gemset
+
+# rbenv / rvm
+.rvmrc
+
+# YARD / RDoc documentation output
+/.yardoc/
+/_yardoc/
+/doc/
+/rdoc/
+
+# Editor / OS
+.idea/
+.vscode/
+*.swp
+.DS_Store
+
+# Test / tooling caches
+.rspec_status
+.rubocop-cache/
