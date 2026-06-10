@@ -61,6 +61,11 @@ Layout/LineLength:
   AllowedPatterns:
     - "^\\s*#" # don't penalise long doc comment lines
 
+# Setting rubygems_mfa_required forces an OTP prompt on `gem push`, which blocks
+# the automated publish workflow; we intentionally omit it from the gemspec.
+Gemspec/RequireMFA:
+  Enabled: false
+
 Style/FrozenStringLiteralComment:
   Enabled: true
 Style/StringLiterals:
