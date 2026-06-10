@@ -80,9 +80,13 @@ gem "spark-connect"
 curl -fsSL https://archive.apache.org/dist/spark/spark-4.1.0/spark-4.1.0-bin-hadoop3.tgz | tar xz
 cd spark-4.1.0-bin-hadoop3
 
-# Start the Connect server (requires Java 17+)
-./sbin/start-connect-server.sh --packages "org.apache.spark:spark-connect_2.13:4.1.0"
+# Start the Connect server (requires Java 17+).
+# Spark 4.0.0+ bundles the Connect server, so no extra packages are needed.
+./sbin/start-connect-server.sh
 ```
+
+On **Spark 3.5.x** the Connect server is not bundled; pull it in with
+`--packages "org.apache.spark:spark-connect_2.13:3.5.5"` (use a Scala 2.13 distribution).
 
 The server listens on `sc://localhost:15002` by default.
 
