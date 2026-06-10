@@ -26,7 +26,6 @@ Gem::Specification.new do |spec|
     "documentation_uri" => "https://hyukjinkwon.github.io/spark-connect-ruby/",
     "bug_tracker_uri" => "#{spec.homepage}/issues",
     "changelog_uri" => "#{spec.homepage}/blob/main/CHANGELOG.md",
-    "rubygems_mfa_required" => "true",
   }
 
   spec.files = Dir[
