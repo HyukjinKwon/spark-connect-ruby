@@ -52,6 +52,35 @@ module SparkConnect
       @retry_base_delay = retry_base_delay
       @max_retry_delay = max_retry_delay
       @server_side_session_id = nil
+      @tags = []
+    end
+
+    # Operation tags attached to every subsequent execution (used with
+    # {#interrupt} `type: :tag`).
+    # @return [Array<String>]
+    attr_reader :tags
+
+    # Add an operation tag. Tags must be non-empty and contain no commas.
+    # @return [void]
+    def add_tag(tag)
+      tag = tag.to_s
+      raise IllegalArgumentError, "Tag must not be empty" if tag.empty?
+      raise IllegalArgumentError, "Tag must not contain ','" if tag.include?(",")
+
+      @tags << tag unless @tags.include?(tag)
+      nil
+    end
+
+    # Remove an operation tag. @return [void]
+    def remove_tag(tag)
+      @tags.delete(tag.to_s)
+      nil
+    end
+
+    # Remove all operation tags. @return [void]
+    def clear_tags
+      @tags.clear
+      nil
     end
 
     # Execute a relation plan and accumulate the streamed response.
@@ -137,7 +166,8 @@ module SparkConnect
         user_context: @user_context,
         operation_id: operation_id,
         plan: plan,
-        client_type: @client_type
+        client_type: @client_type,
+        tags: @tags
       )
 
       result = ExecuteResult.new([], nil, nil, [], nil, 0)

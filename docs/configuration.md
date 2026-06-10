@@ -63,6 +63,26 @@ end
 Server errors carry Spark's canonical `error_class` and `sql_state` when the
 server provides them, plus the originating gRPC status code (`grpc_code`).
 
+## Tags and interrupts
+
+Tag the operations a session runs, then interrupt by tag, by operation id, or
+all at once:
+
+```ruby
+spark.add_tag("nightly-etl")
+# ... run queries; each is tagged "nightly-etl" ...
+spark.get_tags                 #=> ["nightly-etl"]
+spark.interrupt_tag("nightly-etl")   # cancel everything with that tag
+spark.interrupt_all                  # cancel all running operations
+spark.clear_tags
+```
+
+## New sessions
+
+```ruby
+other = spark.new_session   # independent server-side session, config, temp views
+```
+
 ## Retries
 
 The client automatically retries transient gRPC failures (`UNAVAILABLE`,

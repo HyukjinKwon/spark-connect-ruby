@@ -132,7 +132,42 @@ module SparkConnect
       run(C.new(recover_partitions: Proto::RecoverPartitions.new(table_name: table_name.to_s)))
     end
 
+    # Create a managed table and return a {DataFrame} over it.
+    #
+    # @param table_name [String]
+    # @param path [String, nil]
+    # @param source [String, nil] the data source/format.
+    # @param schema [Types::StructType, nil]
+    # @param description [String, nil]
+    # @param options [Hash{String=>String}]
+    # @return [DataFrame]
+    def create_table(table_name, path: nil, source: nil, schema: nil, description: nil, options: {})
+      ct = Proto::CreateTable.new(table_name: table_name.to_s, options: stringify(options))
+      ct.path = path if path
+      ct.source = source if source
+      ct.description = description if description
+      ct.schema = schema.to_proto if schema
+      catalog_df(C.new(create_table: ct)).collect # eagerly create the table
+      @session.table(table_name.to_s)
+    end
+
+    # Create a table backed by data at `path` (an external/unmanaged table).
+    #
+    # @return [DataFrame]
+    def create_external_table(table_name, path: nil, source: nil, schema: nil, options: {})
+      ct = Proto::CreateExternalTable.new(table_name: table_name.to_s, options: stringify(options))
+      ct.path = path if path
+      ct.source = source if source
+      ct.schema = schema.to_proto if schema
+      catalog_df(C.new(create_external_table: ct)).collect # eagerly create the table
+      @session.table(table_name.to_s)
+    end
+
     private
+
+    def stringify(options)
+      options.to_h { |k, v| [k.to_s, v.to_s] }
+    end
 
     def catalog_df(catalog)
       DataFrame.new(@session, PlanBuilder.relation(@session, catalog: catalog))

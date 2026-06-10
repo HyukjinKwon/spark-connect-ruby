@@ -457,6 +457,53 @@ module SparkConnect
     end
     alias writeStream write_stream
 
+    # ---- Temporary views ---------------------------------------------------
+
+    # Register this DataFrame as a session-scoped temporary view, failing if a
+    # view of the same name already exists.
+    # @return [void]
+    def create_temp_view(name)
+      register_view(name, global: false, replace: false)
+    end
+    alias createTempView create_temp_view
+
+    # Register (or replace) this DataFrame as a session-scoped temporary view.
+    # @return [void]
+    def create_or_replace_temp_view(name)
+      register_view(name, global: false, replace: true)
+    end
+    alias createOrReplaceTempView create_or_replace_temp_view
+
+    # Register this DataFrame as a global (cross-session) temporary view.
+    # @return [void]
+    def create_global_temp_view(name)
+      register_view(name, global: true, replace: false)
+    end
+    alias createGlobalTempView create_global_temp_view
+
+    # Register (or replace) this DataFrame as a global temporary view.
+    # @return [void]
+    def create_or_replace_global_temp_view(name)
+      register_view(name, global: true, replace: true)
+    end
+    alias createOrReplaceGlobalTempView create_or_replace_global_temp_view
+
+    # Select columns by a regular expression matched against their names.
+    #
+    # @param regex [String]
+    # @return [Column]
+    def col_regex(regex)
+      Column.new(Proto::Expression.new(unresolved_regex: Proto::Expression::UnresolvedRegex.new(col_name: regex.to_s)))
+    end
+    alias colRegex col_regex
+
+    # @return [DataFrame] a single-column (`value`) DataFrame of each row encoded
+    #   as a JSON string.
+    def to_json(*_args)
+      select(Functions.to_json(Functions.struct(Functions.col("*"))).alias("value"))
+    end
+    alias toJSON to_json
+
     # Define an event-time watermark for late-data handling on a streaming
     # DataFrame.
     #
@@ -579,6 +626,23 @@ module SparkConnect
       ArrowConverter.to_rows(result.arrow_batches)
     end
     alias to_a collect
+
+    # Iterate over all rows (materialises the result). Returns an Enumerator when
+    # no block is given.
+    #
+    # @yieldparam row [Row]
+    # @return [Enumerator, void]
+    def each(&block)
+      return collect.each unless block
+
+      collect.each(&block)
+    end
+
+    # @return [Enumerator<Row>] an enumerator over all rows.
+    def to_local_iterator
+      collect.each
+    end
+    alias toLocalIterator to_local_iterator
 
     # @return [Array<Row>] the first `n` rows.
     def take(n)
@@ -715,6 +779,14 @@ module SparkConnect
 
     def analyze(**kw)
       @session.client.analyze(**kw)
+    end
+
+    def register_view(name, global:, replace:)
+      cmd = Proto::CreateDataFrameViewCommand.new(
+        input: @relation, name: name.to_s, is_global: global, replace: replace
+      )
+      @session.client.execute_command(Proto::Command.new(create_dataframe_view: cmd))
+      nil
     end
 
     def checkpoint_command(local:, eager:)

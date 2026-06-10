@@ -420,7 +420,37 @@ df.explain(:extended)
 plan = df.explain_string(:formatted)
 ```
 
+## Temporary views
+
+Register a DataFrame as a view so you can query it with `spark.sql`:
+
+```ruby
+df.create_or_replace_temp_view("people")        # session-scoped
+df.create_global_temp_view("people")            # cross-session (global_temp.people)
+spark.sql("SELECT count(*) FROM people").show
+```
+
+## JSON, column-regex, and custom transforms
+
+```ruby
+df.to_json                       # => single `value` column of JSON strings
+df.select(df.col_regex("`a.*`")) # select columns whose name matches a regex
+df.transform { |d| d.filter(F.col("age") > 18).limit(10) }  # fluent custom step
+```
+
+## Repartitioning and checkpointing
+
+```ruby
+df.repartition(8)                       # hash repartition
+df.repartition(8, "country")            # by columns
+df.repartition_by_range(8, "ts")        # range partition on sort order
+df.coalesce(1)                          # reduce partitions, no shuffle
+cached = df.checkpoint                  # materialise server-side, truncate lineage
+cached = df.local_checkpoint            # same, on executor-local storage
+```
+
 ## Where to go next
 
 - [Columns and the F library](columns-and-functions.html) - build the
   expressions you pass to `select`, `filter`, `with_column`, and the rest.
+- [Structured Streaming](streaming.html) - the same API for streaming sources.

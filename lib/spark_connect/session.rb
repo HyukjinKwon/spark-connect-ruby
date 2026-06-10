@@ -144,6 +144,52 @@ module SparkConnect
       self
     end
 
+    # Start a brand-new session against the same endpoint (independent
+    # server-side session id, configuration, and temporary views).
+    # @return [SparkSession]
+    def new_session
+      SparkSession.new(SparkConnectClient.new(@client.channel_builder))
+    end
+
+    # Interrupt all operations running in this session.
+    # @return [Array<String>] the ids of the interrupted operations.
+    def interrupt_all
+      @client.interrupt(type: :all).interrupted_ids.to_a
+    end
+
+    # Interrupt all operations tagged with `tag` (see {#add_tag}).
+    # @return [Array<String>]
+    def interrupt_tag(tag)
+      @client.interrupt(type: :tag, value: tag.to_s).interrupted_ids.to_a
+    end
+
+    # Interrupt a single operation by id.
+    # @return [Array<String>]
+    def interrupt_operation(operation_id)
+      @client.interrupt(type: :operation_id, value: operation_id.to_s).interrupted_ids.to_a
+    end
+
+    # Add an operation tag applied to all subsequent executions in this session.
+    # @return [void]
+    def add_tag(tag)
+      @client.add_tag(tag)
+    end
+
+    # Remove a previously added operation tag. @return [void]
+    def remove_tag(tag)
+      @client.remove_tag(tag)
+    end
+
+    # @return [Array<String>] the currently active operation tags.
+    def get_tags
+      @client.tags.dup
+    end
+
+    # Remove all operation tags. @return [void]
+    def clear_tags
+      @client.clear_tags
+    end
+
     # Release the server-side session and stop the client.
     # @return [void]
     def stop

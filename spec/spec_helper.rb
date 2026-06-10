@@ -27,6 +27,8 @@ module SpecHelpers
       @executed_commands = []
       @analyze_requests = []
       @config_operations = []
+      @tags = []
+      @interrupts = []
     end
 
     def session_id = "test-session-id"
@@ -78,8 +80,27 @@ module SpecHelpers
       Proto::ConfigResponse.new(session_id: session_id, pairs: [Proto::KeyValue.new(key: "k", value: "v")])
     end
 
-    def interrupt(*) = Proto::InterruptResponse.new(session_id: session_id)
+    def interrupt(type: :all, value: nil)
+      @interrupts << { type: type, value: value }
+      Proto::InterruptResponse.new(session_id: session_id, interrupted_ids: ["op-1"])
+    end
+
     def release_session = nil
+
+    # --- operation tags (mirrors SparkConnectClient) ---
+    attr_reader :tags, :interrupts
+
+    def add_tag(tag)
+      @tags << tag.to_s unless @tags.include?(tag.to_s)
+    end
+
+    def remove_tag(tag) = @tags.delete(tag.to_s)
+    def clear_tags = @tags.clear
+
+    # A real (non-connecting) channel builder so new_session can build a client.
+    def channel_builder
+      @channel_builder ||= SparkConnect::ChannelBuilder.new("sc://localhost:15002")
+    end
 
     private
 

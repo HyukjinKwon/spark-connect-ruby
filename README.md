@@ -40,22 +40,15 @@ spark.stop
 
 ## What it supports
 
-`spark-connect` covers the DataFrame and SQL surface defined by the Spark
-Connect protocol: DataFrames and column expressions, the standard SQL function
-library, Spark SQL with parameters, reading and writing (CSV/JSON/Parquet/ORC/
-JDBC/tables), the catalog, runtime configuration, observations, a full typed
-schema system, **Structured Streaming** (streaming sources/sinks, triggers,
-output modes, watermarks, and a query manager), and Apache Arrow result
-decoding -- all over a resilient gRPC client with TLS/bearer-token auth and
-automatic retries.
+`spark-connect` implements the Spark Connect **DataFrame**, **SQL**, and
+**Structured Streaming** API -- everything **except** user-defined functions
+(UDFs) and the `foreach`/`foreachBatch` streaming sinks, whose Spark Connect
+protobuf definitions are not yet finalized.
 
-Method names are snake_case (idiomatic Ruby); the highest-traffic PySpark names
-also have camelCase aliases (`groupBy`, `withColumn`, `orderBy`,
-`createDataFrame`, ...) so PySpark snippets translate almost verbatim.
-
-User-defined functions (UDFs) and the `foreach`/`foreachBatch` streaming sinks
-are **not yet supported**: their Spark Connect protobuf definitions are not yet
-finalized.
+Results decode through Apache Arrow into ordered, name-addressable `Row`s.
+Method names are snake_case (idiomatic Ruby) with camelCase aliases for the
+common PySpark names (`groupBy`, `withColumn`, `orderBy`, `createDataFrame`,
+...), so PySpark code ports almost verbatim.
 
 ## Requirements
 
