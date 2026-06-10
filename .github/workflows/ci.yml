@@ -16,6 +16,18 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
+      # bundler installs the gemspec's runtime deps (incl. red-arrow), which
+      # build against the Apache Arrow GLib system libraries.
+      - name: Install Apache Arrow (GLib) system libraries
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y -V ca-certificates lsb-release wget
+          wget "https://apache.jfrog.io/artifactory/arrow/$(lsb_release --id --short | tr 'A-Z' 'a-z')/apache-arrow-apt-source-latest-$(lsb_release --codename --short).deb"
+          sudo apt-get install -y -V "./apache-arrow-apt-source-latest-$(lsb_release --codename --short).deb"
+          sudo apt-get update
+          sudo apt-get install -y -V libarrow-glib-dev
+
       - uses: ruby/setup-ruby@v1
         with:
           ruby-version: "3.3"

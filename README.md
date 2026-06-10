@@ -135,22 +135,10 @@ df.schema.simple_string  #=> "struct<name:string,dept:string,salary:bigint>"
 spark.sql("SELECT * FROM VALUES (1), (2), (3) AS t(x) WHERE x > :min", { min: 1 }).show
 ```
 
-## API overview
+## Documentation
 
-| PySpark concept            | spark-connect (Ruby)                                    |
-| -------------------------- | ------------------------------------------------------- |
-| `SparkSession.builder`     | `SparkConnect::SparkSession.builder`                    |
-| `pyspark.sql.functions` (`F`) | `SparkConnect::Functions` / `SparkConnect::F`        |
-| `DataFrame`                | `SparkConnect::DataFrame`                               |
-| `Column`                   | `SparkConnect::Column`                                  |
-| `Window`                   | `SparkConnect::Window`                                  |
-| `Row`                      | `SparkConnect::Row`                                     |
-| `spark.read` / `df.write`  | `SparkConnect::DataFrameReader` / `DataFrameWriter`     |
-| `spark.catalog`            | `SparkConnect::Catalog`                                 |
-| `spark.conf`               | `SparkConnect::RuntimeConfig`                           |
-| `pyspark.sql.types`        | `SparkConnect::Types::*`                                |
-
-Full documentation: **<https://hyukjinkwon.github.io/spark-connect-ruby/>**
+Full documentation, including guides for every part of the API, lives at
+**<https://hyukjinkwon.github.io/spark-connect-ruby/>**.
 
 Runnable [`examples/`](examples/) cover quickstart, transformations, aggregations, joins, window functions, SQL, reading/writing, local data, and NA/stat helpers.
 
