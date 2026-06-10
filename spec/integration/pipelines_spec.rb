@@ -8,6 +8,13 @@ RSpec.describe "Declarative Pipelines (integration)", :integration, if: ENV.fetc
   let(:session) { live_session }
   let(:f) { SparkConnect::F }
 
+  # Declarative Pipelines is only available on Spark 4.1+. Older servers (3.5.x,
+  # 4.0.x) reject the pipeline commands with an INTERNAL "not supported" error.
+  before do
+    skip "Declarative Pipelines requires Spark 4.1+ (server is #{session.version})" unless
+      server_spark_version_at_least?("4.1")
+  end
+
   it "creates a graph, defines chained materialized views, and runs them" do
     pipe = session.pipeline
     expect(pipe.graph_id).to be_a(String)
