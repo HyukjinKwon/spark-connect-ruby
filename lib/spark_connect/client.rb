@@ -27,7 +27,8 @@ module SparkConnect
     #   @return [Spark::Connect::Relation, nil] relation produced by a SQL command.
     ExecuteResult = Struct.new(
       :arrow_batches, :schema, :metrics, :observed_metrics, :sql_command_result, :row_count,
-      :write_stream_result, :streaming_query_result, :streaming_manager_result, :checkpoint_relation
+      :write_stream_result, :streaming_query_result, :streaming_manager_result, :checkpoint_relation,
+      :pipeline_command_result, :pipeline_events
     )
 
     # @return [String] the client-side session id (UUID v4).
@@ -171,6 +172,7 @@ module SparkConnect
       )
 
       result = ExecuteResult.new([], nil, nil, [], nil, 0)
+      result.pipeline_events = []
       with_retries do
         responses = @stub.execute_plan(req, metadata: @metadata)
         responses.each do |resp|
@@ -201,6 +203,10 @@ module SparkConnect
         result.streaming_manager_result = resp.streaming_query_manager_command_result
       when :checkpoint_command_result
         result.checkpoint_relation = resp.checkpoint_command_result.relation
+      when :pipeline_command_result
+        result.pipeline_command_result = resp.pipeline_command_result
+      when :pipeline_event_result
+        result.pipeline_events << resp.pipeline_event_result.event
       end
     end
 

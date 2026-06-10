@@ -1,6 +1,6 @@
 ---
 title: Aggregations and Windows
-nav_order: 10
+nav_order: 11
 ---
 
 # Aggregations and Windows

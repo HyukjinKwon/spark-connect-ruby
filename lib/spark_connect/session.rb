@@ -108,6 +108,16 @@ module SparkConnect
       StreamingQueryManager.new(self)
     end
 
+    # Create a new Spark Declarative Pipeline (a dataflow graph) in this session.
+    #
+    # @param default_catalog [String, nil]
+    # @param default_database [String, nil]
+    # @param sql_conf [Hash{String=>String}] SQL configs applied to all flows.
+    # @return [Pipeline]
+    def pipeline(default_catalog: nil, default_database: nil, sql_conf: {})
+      Pipeline.new(self, default_catalog: default_catalog, default_database: default_database, sql_conf: sql_conf)
+    end
+
     # Build a {DataFrame} from local Ruby data.
     #
     # @param data [Array<Hash>, Array<Array>, Array<Row>]

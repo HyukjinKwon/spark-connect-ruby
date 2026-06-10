@@ -52,8 +52,30 @@ module SpecHelpers
         )
       when :checkpoint_command
         result.checkpoint_relation = Proto::CachedRemoteRelation.new(relation_id: "test-relation-id")
+      when :pipeline_command
+        result.pipeline_command_result = fake_pipeline_result(command.pipeline_command)
+        result.pipeline_events = fake_pipeline_events(command.pipeline_command)
       end
       result
+    end
+
+    def fake_pipeline_result(pc)
+      pcr = Proto::PipelineCommandResult
+      ident = Proto::ResolvedIdentifier.new(catalog_name: "spark_catalog", namespace: ["default"], table_name: "out")
+      case pc.command_type
+      when :create_dataflow_graph
+        pcr.new(create_dataflow_graph_result: pcr::CreateDataflowGraphResult.new(dataflow_graph_id: "graph-1"))
+      when :define_output
+        pcr.new(define_output_result: pcr::DefineOutputResult.new(resolved_identifier: ident))
+      when :define_flow
+        pcr.new(define_flow_result: pcr::DefineFlowResult.new(resolved_identifier: ident))
+      end
+    end
+
+    def fake_pipeline_events(pc)
+      return [] unless pc.command_type == :start_run
+
+      [Proto::PipelineEvent.new(message: "Run started"), Proto::PipelineEvent.new(message: "Run completed")]
     end
 
     def analyze(**kw)

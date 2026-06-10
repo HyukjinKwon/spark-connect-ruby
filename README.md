@@ -40,10 +40,11 @@ spark.stop
 
 ## What it supports
 
-`spark-connect` implements the Spark Connect **DataFrame**, **SQL**, and
-**Structured Streaming** API -- everything **except** user-defined functions
-(UDFs) and the `foreach`/`foreachBatch` streaming sinks, whose Spark Connect
-protobuf definitions are not yet finalized.
+`spark-connect` implements the Spark Connect **DataFrame**, **SQL**,
+**Structured Streaming**, and **Declarative Pipelines** API -- everything
+**except** user-defined functions (UDFs) and the `foreach`/`foreachBatch`
+streaming sinks, whose Spark Connect protobuf definitions are not yet finalized.
+(The separate, experimental MLlib-over-Connect surface is also out of scope.)
 
 Results decode through Apache Arrow into ordered, name-addressable `Row`s.
 Method names are snake_case (idiomatic Ruby) with camelCase aliases for the

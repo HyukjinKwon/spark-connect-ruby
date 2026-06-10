@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+set -euo pipefail
+cd "$(dirname "$0")/.."
+
+# Install development dependencies. Requires the Apache Arrow GLib system
+# libraries (see docs/installation) for the red-arrow dependency.
+bundle install

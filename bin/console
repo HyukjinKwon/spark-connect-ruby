@@ -1,0 +1,26 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+# An IRB session with spark-connect loaded. If SPARK_REMOTE is set, a session is
+# opened and bound to `spark` (with `F` and `T` shortcuts available too).
+#
+#   SPARK_REMOTE=sc://localhost:15002 bin/console
+
+require "bundler/setup"
+require "spark-connect"
+require "irb"
+
+F = SparkConnect::F
+T = SparkConnect::Types
+
+spark = (SparkConnect::SparkSession.builder.remote(ENV.fetch("SPARK_REMOTE")).get_or_create if ENV["SPARK_REMOTE"])
+
+puts(if spark
+       "Connected: `spark` is ready (shortcuts: F, T). e.g. spark.range(5).show"
+     else
+       "spark-connect loaded (F, T defined). Set SPARK_REMOTE to auto-connect, " \
+         "or build a session via SparkConnect::SparkSession.builder."
+     end)
+
+# Drop into IRB with `spark`, `F`, and `T` in scope.
+binding.irb # rubocop:disable Lint/Debugger

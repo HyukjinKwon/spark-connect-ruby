@@ -9,6 +9,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Declarative Pipelines** (Spark 4.1+): `SparkSession#pipeline` returns a
+  `Pipeline` (dataflow graph). Define outputs (`create_table`,
+  `create_materialized_view`, `create_temporary_view`, `create_sink`) and flows
+  (`define_flow`, `define_sql`), then `start_run` (with `full_refresh`/`refresh`/
+  `dry`/`storage`) which streams `PipelineEvent`s; plus `read` and `drop`.
 - **Structured Streaming**: `SparkSession#read_stream` (`DataStreamReader`),
   `DataFrame#write_stream` (`DataStreamWriter`), `StreamingQuery` (status,
   recent/last progress, await_termination, process_all_available, stop,
