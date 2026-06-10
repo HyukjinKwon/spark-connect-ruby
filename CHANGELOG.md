@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-06-10
+
 ### Added
 
 - **Declarative Pipelines** (Spark 4.1+): `SparkSession#pipeline` returns a
@@ -22,9 +24,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   (processing-time, once, available-now, continuous), output modes, and
   file/console/memory/Kafka sinks. (`foreach`/`foreachBatch` and UDFs remain
   unsupported pending finalized protobuf definitions.)
-- `DataFrame#with_watermark` for event-time watermarks on streaming DataFrames.
-- `DataFrame#repartition_by_range`, `DataFrame#checkpoint` /
-  `DataFrame#local_checkpoint`, and `DataFrame#transform`.
+- Temporary views: `DataFrame#create_temp_view` /
+  `create_or_replace_temp_view` / `create_global_temp_view` /
+  `create_or_replace_global_temp_view`.
+- `DataFrame#with_watermark`, `repartition_by_range`, `checkpoint` /
+  `local_checkpoint`, `transform`, `col_regex`, `to_json`, and
+  `each` / `to_local_iterator`.
+- `Catalog#create_table` and `Catalog#create_external_table`.
+- `SparkSession#new_session`, `interrupt_all` / `interrupt_tag` /
+  `interrupt_operation`, and operation tags (`add_tag` / `remove_tag` /
+  `get_tags` / `clear_tags`) propagated on every execution.
+- Regenerated the vendored protobuf/gRPC stubs against Spark Connect **4.1.0**
+  (adds `pipelines.proto`).
+- `bin/console` (an IRB session with `spark`/`F`/`T`) and `bin/setup`.
 
 ## [0.1.0] - 2026-06-10
 
@@ -65,5 +77,6 @@ Initial release.
 - Vendored Spark Connect 4.1 protobuf/gRPC definitions and a regeneration script
   (`bin/generate-protos`).
 
-[Unreleased]: https://github.com/HyukjinKwon/spark-connect-ruby/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/HyukjinKwon/spark-connect-ruby/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/HyukjinKwon/spark-connect-ruby/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/HyukjinKwon/spark-connect-ruby/releases/tag/v0.1.0
