@@ -43,7 +43,7 @@ Initial release.
   string parsing, TLS/bearer-token auth, and retry-with-backoff.
 - A structured error hierarchy (`Error`, `ConnectionError`, `SparkConnectError`,
   `AnalysisError`, `ParseError`, ...).
-- Vendored Spark Connect 4.0 protobuf/gRPC definitions and a regeneration script
+- Vendored Spark Connect 4.1 protobuf/gRPC definitions and a regeneration script
   (`bin/generate-protos`).
 
 [Unreleased]: https://github.com/HyukjinKwon/spark-connect-ruby/compare/v0.1.0...HEAD

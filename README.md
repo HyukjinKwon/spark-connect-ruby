@@ -38,19 +38,22 @@ spark.stop
 +------+---+------+
 ```
 
-## Features
+## What it supports
 
-- **DataFrame API** closely modeled on PySpark: `select`, `filter`/`where`, `with_column`, `join`, `group_by`/`agg`, `order_by`, `limit`, `union`, `distinct`, window functions, set operations, sampling, pivot, unpivot, and more.
-- **Column expressions** with natural Ruby operators (`+ - * / % == < > & |`), aliasing, casting, `when`/`otherwise`, and complex-type access.
-- **A comprehensive function library** (`SparkConnect::Functions`, aka `F`): aggregate, math, string, date/time, collection/array/map, JSON, conditional, hashing, and higher-order (lambda) functions.
-- **Spark SQL**: `spark.sql(query, params)` with named and positional parameters.
-- **Reading & writing** via `DataFrameReader`/`DataFrameWriter` (CSV, JSON, Parquet, ORC, text, JDBC, tables) and the v2 `DataFrameWriterV2` catalog API.
-- **Typed schemas**: a full `Types` system with DDL/`simpleString`/JSON rendering and `printSchema`.
-- **Apache Arrow** result decoding (via [`red-arrow`](https://rubygems.org/gems/red-arrow)) into ordered, name-addressable `Row`s.
-- **Catalog** API, **runtime configuration**, **observations** (named metrics), and a structured **error hierarchy**.
-- **Resilient gRPC client** with TLS/bearer-token auth (`sc://` connection strings) and automatic retries with exponential backoff.
+`spark-connect` covers the batch DataFrame and SQL surface defined by the Spark
+Connect protocol: DataFrames and column expressions, the standard SQL function
+library, Spark SQL with parameters, reading and writing (CSV/JSON/Parquet/ORC/
+JDBC/tables), the catalog, runtime configuration, observations, a full typed
+schema system, and Apache Arrow result decoding -- all over a resilient gRPC
+client with TLS/bearer-token auth and automatic retries.
 
-Method names are snake_case (idiomatic Ruby); the highest-traffic PySpark names also have camelCase aliases (`groupBy`, `withColumn`, `orderBy`, `createDataFrame`, ...) so PySpark snippets translate almost verbatim.
+Method names are snake_case (idiomatic Ruby); the highest-traffic PySpark names
+also have camelCase aliases (`groupBy`, `withColumn`, `orderBy`,
+`createDataFrame`, ...) so PySpark snippets translate almost verbatim.
+
+Structured Streaming and user-defined functions (UDFs) are defined by the Spark
+Connect protocol but are **not yet implemented** by this client; they are on the
+roadmap.
 
 ## Requirements
 
@@ -58,7 +61,7 @@ Method names are snake_case (idiomatic Ruby); the highest-traffic PySpark names 
 - **Apache Arrow C++/GLib system libraries** (required by the `red-arrow` dependency):
   - macOS: `brew install apache-arrow apache-arrow-glib`
   - Ubuntu/Debian: install `libarrow-glib-dev` from the [Apache Arrow APT repository](https://arrow.apache.org/install/)
-- A reachable **Spark Connect server** (Spark 3.5+; this client targets the Spark Connect 4.0 protocol).
+- A reachable **Spark Connect server**. This client is generated against the Spark Connect 4.1 protocol and supports **Apache Spark 3.5 and above**.
 
 See the [installation guide](https://hyukjinkwon.github.io/spark-connect-ruby/installation.html) for details.
 
@@ -77,12 +80,12 @@ gem "spark-connect"
 ## Running a local Spark Connect server
 
 ```bash
-# Download a Spark distribution (4.0.0 shown here)
-curl -fsSL https://archive.apache.org/dist/spark/spark-4.0.0/spark-4.0.0-bin-hadoop3.tgz | tar xz
-cd spark-4.0.0-bin-hadoop3
+# Download a Spark distribution (4.1.0 shown here; 3.5+ also works)
+curl -fsSL https://archive.apache.org/dist/spark/spark-4.1.0/spark-4.1.0-bin-hadoop3.tgz | tar xz
+cd spark-4.1.0-bin-hadoop3
 
 # Start the Connect server (requires Java 17+)
-./sbin/start-connect-server.sh --jars "$(pwd)/jars/spark-connect_2.13-4.0.0.jar"
+./sbin/start-connect-server.sh --jars "$(pwd)/jars/spark-connect_2.13-4.1.0.jar"
 ```
 
 The server listens on `sc://localhost:15002` by default.
@@ -144,7 +147,7 @@ Runnable [`examples/`](examples/) cover quickstart, transformations, aggregation
 
 ## Compatibility
 
-The client is generated against the **Spark Connect 4.0** protocol and is wire-compatible with Spark Connect servers on the 3.5 line and newer.
+The client is generated against the **Spark Connect 4.1** protocol and supports **Apache Spark 3.5 and above** (the Spark Connect wire protocol is backward compatible across these releases).
 
 ## Development
 
@@ -165,9 +168,3 @@ bin/generate-protos
 ```
 
 See [CONTRIBUTING.md](CONTRIBUTING.md).
-
-## License
-
-Licensed under the [Apache License 2.0](LICENSE).
-
-This project vendors the Spark Connect Protocol Buffers definitions from Apache Spark. It is not affiliated with, endorsed by, or sponsored by the Apache Software Foundation. "Apache", "Apache Spark", and "Spark" are trademarks of the Apache Software Foundation. See [NOTICE](NOTICE).

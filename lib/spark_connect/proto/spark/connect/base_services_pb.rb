@@ -65,6 +65,15 @@ module Spark
         rpc :ReleaseSession, ::Spark::Connect::ReleaseSessionRequest, ::Spark::Connect::ReleaseSessionResponse
         # FetchErrorDetails retrieves the matched exception with details based on a provided error id.
         rpc :FetchErrorDetails, ::Spark::Connect::FetchErrorDetailsRequest, ::Spark::Connect::FetchErrorDetailsResponse
+        # Create a clone of a Spark Connect session on the server side. The server-side session
+        # is cloned with all its current state (SQL configurations, temporary views, registered
+        # functions, catalog state) copied over to a new independent session. The cloned session
+        # is isolated from the source session - any subsequent changes to either session's
+        # server-side state will not be reflected in the other.
+        #
+        # The request can optionally specify a custom session ID for the cloned session (must be
+        # a valid UUID). If not provided, a new UUID will be generated automatically.
+        rpc :CloneSession, ::Spark::Connect::CloneSessionRequest, ::Spark::Connect::CloneSessionResponse
       end
 
       Stub = Service.rpc_stub_class

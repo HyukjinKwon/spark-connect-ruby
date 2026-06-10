@@ -39,8 +39,8 @@ SPARK_CONNECT_RED_ARROW_VERSION=22.0.0 bundle install
 
 ## Version compatibility
 
-The client is generated against the Spark Connect 4.0 protocol and works with
-Spark Connect servers on the 3.5 line and newer. If you connect to an older
+The client is generated against the Spark Connect 4.1 protocol and supports
+Apache Spark 3.5 and above. If you connect to an older
 server and a specific relation or function is rejected, that feature may not
 exist server-side; check your Spark version with `spark.version`.
 

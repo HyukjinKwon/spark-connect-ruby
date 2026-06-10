@@ -16,7 +16,7 @@ PROTO_DIR="proto"
 OUT_DIR="lib/spark_connect/proto"
 BASE_URL="https://raw.githubusercontent.com/apache/spark/${SPARK_REF}/sql/connect/common/src/main/protobuf/spark/connect"
 
-PROTOS=(base catalog commands common expressions ml ml_common relations types)
+PROTOS=(base catalog commands common expressions ml ml_common pipelines relations types)
 
 echo "==> Spark Connect protocol ref: ${SPARK_REF}"
 mkdir -p "${PROTO_DIR}/spark/connect" "${OUT_DIR}"

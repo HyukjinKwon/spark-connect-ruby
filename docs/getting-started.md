@@ -73,7 +73,7 @@ spark = SparkConnect::SparkSession.builder
 You can inspect the server and session:
 
 ```ruby
-spark.version     # => the Spark version reported by the server, e.g. "4.0.0"
+spark.version     # => the Spark version reported by the server, e.g. "4.1.2"
 spark.session_id  # => the client session id (UUID)
 ```
 

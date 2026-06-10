@@ -21,7 +21,7 @@ Spark Connect server.
 {: .note }
 > **Gem:** [`spark-connect`](https://rubygems.org/gems/spark-connect) &nbsp;|&nbsp;
 > **Source:** [HyukjinKwon/spark-connect-ruby](https://github.com/HyukjinKwon/spark-connect-ruby) &nbsp;|&nbsp;
-> **Targets** the Spark Connect 4.0 protocol (works with Spark 3.5+ servers).
+> **Targets** the Spark Connect 4.1 protocol; supports Apache Spark 3.5 and above.
 
 ## What is Spark Connect?
 

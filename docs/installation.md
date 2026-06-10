@@ -85,7 +85,7 @@ A quick smoke test that the gem and its native Arrow dependency load:
 require "spark-connect"
 
 puts SparkConnect::VERSION         # => the gem version, e.g. "0.1.0"
-puts SparkConnect::SPARK_VERSION   # => the Spark Connect protocol line, e.g. "4.0.0"
+puts SparkConnect::SPARK_VERSION   # => the Spark Connect protocol line, e.g. "4.1.0"
 ```
 
 If `require "spark-connect"` raises a load error mentioning Arrow or GLib, the
@@ -114,7 +114,7 @@ server runs.
 
    ```bash
    ~/spark/sbin/start-connect-server.sh \
-     --packages "org.apache.spark:spark-connect_2.13:4.0.0" \
+     --packages "org.apache.spark:spark-connect_2.13:4.1.0" \
      --conf spark.log.level=WARN
    ```
 
