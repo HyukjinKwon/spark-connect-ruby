@@ -20,46 +20,12 @@ The gem requires Ruby 3.1 or newer (it is tested against 3.1, 3.2, 3.3, and
 ruby --version
 ```
 
-### Apache Arrow GLib system libraries
-
-`spark-connect` decodes query results using
-[`red-arrow`](https://rubygems.org/gems/red-arrow), which is a binding over the
-**Apache Arrow C++ / GLib** libraries. Those native libraries must be installed
-on your system **before** `bundle install`, and the installed Arrow version must
-match the `red-arrow` gem version.
-
-#### macOS (Homebrew)
-
-```bash
-brew install apache-arrow apache-arrow-glib
-```
-
-#### Ubuntu / Debian
-
-These steps mirror the project's CI (`.github/workflows/ci.yml`): they add the
-official Apache Arrow APT repository and then install the GLib development
-packages.
-
-```bash
-sudo apt-get update
-sudo apt-get install -y -V ca-certificates lsb-release wget
-wget "https://apache.jfrog.io/artifactory/arrow/$(lsb_release --id --short | tr 'A-Z' 'a-z')/apache-arrow-apt-source-latest-$(lsb_release --codename --short).deb"
-sudo apt-get install -y -V "./apache-arrow-apt-source-latest-$(lsb_release --codename --short).deb"
-sudo apt-get update
-sudo apt-get install -y -V libarrow-glib-dev libparquet-glib-dev
-```
-
-> **Matching versions matters.** `red-arrow` must be the same major version as
-> the Arrow GLib libraries it loads. If you install a specific Arrow version
-> locally, pin `red-arrow` to match. The project's development `Gemfile`
-> demonstrates this with a `SPARK_CONNECT_RED_ARROW_VERSION` override, for
-> example `SPARK_CONNECT_RED_ARROW_VERSION=22.0.0`.
-
 ## Installing the gem
 
 ### Directly
 
 ```bash
+gem install rubygems-requirements-system
 gem install spark-connect
 ```
 
@@ -68,6 +34,7 @@ gem install spark-connect
 Add it to your `Gemfile`:
 
 ```ruby
+plugin "rubygems-requirements-system"
 gem "spark-connect"
 ```
 
