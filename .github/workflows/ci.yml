@@ -108,7 +108,7 @@ jobs:
 
       - name: Cache Spark distribution
         id: spark-cache
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: ~/spark
           # Keyed on the distribution name so switching the 3.5.x tarball to the
