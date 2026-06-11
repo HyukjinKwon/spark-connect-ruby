@@ -2,6 +2,8 @@
 
 source "https://rubygems.org"
 
+plugin "rubygems-requirements-system"
+
 # Specify gem dependencies in spark-connect.gemspec
 gemspec
 

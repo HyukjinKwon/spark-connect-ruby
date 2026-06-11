@@ -25,19 +25,19 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install Apache Arrow (GLib) system libraries
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y -V ca-certificates lsb-release wget
-          wget "https://apache.jfrog.io/artifactory/arrow/$(lsb_release --id --short | tr 'A-Z' 'a-z')/apache-arrow-apt-source-latest-$(lsb_release --codename --short).deb"
-          sudo apt-get install -y -V "./apache-arrow-apt-source-latest-$(lsb_release --codename --short).deb"
-          sudo apt-get update
-          sudo apt-get install -y -V libarrow-glib-dev
-
       - uses: ruby/setup-ruby@v1
         with:
           ruby-version: "3.3"
-          bundler-cache: true
+          # We can't use "bundler-cache: true" here because
+          # rubygems-requirements-system isn't triggered when Bundler
+          # cache is available.
+          # bundler-cache: true
+
+      # Always run "bundle install" manually to trigger
+      # rubygems-requirements-system that install Apache Arrow GLib
+      # automatically.
+      - name: Install dependencies
+        run: bundle install
 
       - name: Build YARD API documentation
         run: bundle exec yard doc --output-dir docs/api

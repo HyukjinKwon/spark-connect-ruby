@@ -17,21 +17,19 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # bundler installs the gemspec's runtime deps (incl. red-arrow), which
-      # build against the Apache Arrow GLib system libraries.
-      - name: Install Apache Arrow (GLib) system libraries
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y -V ca-certificates lsb-release wget
-          wget "https://apache.jfrog.io/artifactory/arrow/$(lsb_release --id --short | tr 'A-Z' 'a-z')/apache-arrow-apt-source-latest-$(lsb_release --codename --short).deb"
-          sudo apt-get install -y -V "./apache-arrow-apt-source-latest-$(lsb_release --codename --short).deb"
-          sudo apt-get update
-          sudo apt-get install -y -V libarrow-glib-dev
-
       - uses: ruby/setup-ruby@v1
         with:
           ruby-version: "3.3"
-          bundler-cache: true
+          # We can't use "bundler-cache: true" here because
+          # rubygems-requirements-system isn't triggered when Bundler
+          # cache is available.
+          # bundler-cache: true
+
+      # Always run "bundle install" manually to trigger
+      # rubygems-requirements-system that install Apache Arrow GLib
+      # automatically.
+      - run: bundle install
+
       - run: bundle exec rubocop --parallel
 
   test:
@@ -44,19 +42,19 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install Apache Arrow (GLib) system libraries
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y -V ca-certificates lsb-release wget
-          wget "https://apache.jfrog.io/artifactory/arrow/$(lsb_release --id --short | tr 'A-Z' 'a-z')/apache-arrow-apt-source-latest-$(lsb_release --codename --short).deb"
-          sudo apt-get install -y -V "./apache-arrow-apt-source-latest-$(lsb_release --codename --short).deb"
-          sudo apt-get update
-          sudo apt-get install -y -V libarrow-glib-dev libparquet-glib-dev
-
       - uses: ruby/setup-ruby@v1
         with:
           ruby-version: ${{ matrix.ruby }}
-          bundler-cache: true
+          # We can't use "bundler-cache: true" here because
+          # rubygems-requirements-system isn't triggered when Bundler
+          # cache is available.
+          # bundler-cache: true
+
+      # Always run "bundle install" manually to trigger
+      # rubygems-requirements-system that install Apache Arrow GLib
+      # automatically.
+      - name: Install dependencies
+        run: bundle install
 
       - name: Run unit specs
         run: bundle exec rake spec
@@ -87,15 +85,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install Apache Arrow (GLib) system libraries
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y -V ca-certificates lsb-release wget
-          wget "https://apache.jfrog.io/artifactory/arrow/$(lsb_release --id --short | tr 'A-Z' 'a-z')/apache-arrow-apt-source-latest-$(lsb_release --codename --short).deb"
-          sudo apt-get install -y -V "./apache-arrow-apt-source-latest-$(lsb_release --codename --short).deb"
-          sudo apt-get update
-          sudo apt-get install -y -V libarrow-glib-dev libparquet-glib-dev
-
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
@@ -104,7 +93,16 @@ jobs:
       - uses: ruby/setup-ruby@v1
         with:
           ruby-version: "3.3"
-          bundler-cache: true
+          # We can't use "bundler-cache: true" here because
+          # rubygems-requirements-system isn't triggered when Bundler
+          # cache is available.
+          # bundler-cache: true
+
+      # Always run "bundle install" manually to trigger
+      # rubygems-requirements-system that install Apache Arrow GLib
+      # automatically.
+      - name: Install dependencies
+        run: bundle install
 
       - name: Cache Spark distribution
         id: spark-cache

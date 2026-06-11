@@ -64,12 +64,14 @@ See the [installation guide](https://hyukjinkwon.github.io/spark-connect-ruby/in
 ## Installation
 
 ```bash
+gem install rubygems-requirements-system
 gem install spark-connect
 ```
 
 Or in a `Gemfile`:
 
 ```ruby
+plugin "rubygems-requirements-system"
 gem "spark-connect"
 ```
 
