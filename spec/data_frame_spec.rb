@@ -121,6 +121,26 @@ RSpec.describe SparkConnect::DataFrame do
     it "exposes the dropDuplicates alias" do
       expect(rel_type(df.dropDuplicates)).to eq(:deduplicate)
     end
+
+    # Regression: this used to be a plain alias of #drop_duplicates and never
+    # set the within_watermark flag that distinguishes the operation.
+    it "drop_duplicates_within_watermark sets within_watermark with all columns" do
+      out = df.drop_duplicates_within_watermark
+      expect(rel_type(out)).to eq(:deduplicate)
+      expect(rel_body(out).within_watermark).to be(true)
+      expect(rel_body(out).all_columns_as_keys).to be(true)
+    end
+
+    it "drop_duplicates_within_watermark with a subset keeps within_watermark" do
+      out = df.drop_duplicates_within_watermark(%w[id])
+      expect(rel_body(out).within_watermark).to be(true)
+      expect(rel_body(out).column_names).to eq(%w[id])
+      expect(rel_body(out).all_columns_as_keys).to be(false)
+    end
+
+    it "exposes the dropDuplicatesWithinWatermark alias" do
+      expect(rel_body(df.dropDuplicatesWithinWatermark).within_watermark).to be(true)
+    end
   end
 
   describe "#order_by / #sort / #sort_within_partitions" do
@@ -427,6 +447,126 @@ RSpec.describe SparkConnect::DataFrame do
       io = StringIO.new
       df.print_schema(io)
       expect(io.string).to include("root")
+    end
+
+    it "to_a aliases collect" do
+      expect(df.to_a.size).to eq(3)
+    end
+
+    it "each yields every row and returns an Enumerator without a block" do
+      seen = []
+      df.each { |r| seen << r[0] } # rubocop:disable Style/MapIntoArray -- testing #each, not building a map
+      expect(seen).to eq([1, 2, 3])
+      expect(df.each).to be_a(Enumerator)
+      expect(df.to_local_iterator).to be_a(Enumerator)
+    end
+
+    it "empty? / is_empty reflect whether any rows come back" do
+      expect(df.empty?).to be(false)
+      expect(df.is_empty).to be(false)
+      expect(fake_client.last_relation.rel_type).to eq(:limit)
+    end
+
+    it "empty? is true when no rows are returned" do
+      fake_client.rows = []
+      fake_client.schema = schema
+      expect(df.empty?).to be(true)
+    end
+
+    it "show prints the formatted table" do
+      fake_client.schema = SparkConnect::Types.struct(
+        SparkConnect::Types.field("show", SparkConnect::Types.string)
+      )
+      fake_client.rows = [{ "show" => "+--+" }]
+      expect { df.show(5) }.to output(/\+--\+/).to_stdout
+      expect(fake_client.last_relation.show_string.num_rows).to eq(5)
+    end
+
+    it "show_string maps truncate: false to width 0 and an Integer to its width" do
+      fake_client.schema = SparkConnect::Types.struct(
+        SparkConnect::Types.field("show", SparkConnect::Types.string)
+      )
+      fake_client.rows = [{ "show" => "x" }]
+      df.show_string(3, truncate: false)
+      expect(fake_client.last_relation.show_string.truncate).to eq(0)
+      df.show_string(3, truncate: 50)
+      expect(fake_client.last_relation.show_string.truncate).to eq(50)
+    end
+
+    it "to_arrow returns an Arrow::Table" do
+      expect(df.to_arrow).to be_a(Arrow::Table)
+    end
+
+    it "to_h_array returns rows as Hashes" do
+      expect(df.to_h_array).to eq([{ "id" => 1 }, { "id" => 2 }, { "id" => 3 }])
+    end
+
+    it "count returns 0 when no row comes back" do
+      fake_client.rows = []
+      fake_client.schema = schema
+      expect(df.count).to eq(0)
+    end
+
+    it "column_objects and [] resolve column references" do
+      expect(df.column_objects.map(&:to_s)).to all(be_a(String))
+      expect(df["id"]).to be_a(SparkConnect::Column)
+      expect(df[0]).to be_a(SparkConnect::Column)
+    end
+
+    it "method_missing resolves a valid column name and respond_to_missing? agrees" do
+      expect(df.id).to be_a(SparkConnect::Column)
+      expect(df.respond_to?(:id)).to be(true)
+      expect(df.respond_to?(:not_a_column)).to be(false)
+      expect { df.not_a_column }.to raise_error(NoMethodError)
+    end
+
+    describe "analyze-backed metadata" do
+      it "explain_string / explain return the physical plan" do
+        expect(df.explain_string).to include("Physical Plan")
+        expect { df.explain }.to output(/Physical Plan/).to_stdout
+      end
+
+      it "input_files returns the file list" do
+        expect(df.input_files).to eq([])
+      end
+
+      it "local? / streaming? read the analyze flags" do
+        expect(df.local?).to be(true)
+        expect(df.streaming?).to be(false)
+      end
+
+      it "semantic_hash and same_semantics? read analyze results" do
+        expect(df.semantic_hash).to eq(42)
+        expect(df.same_semantics?(other)).to be(true)
+      end
+    end
+
+    describe "checkpoint / observe commands" do
+      it "checkpoint issues a checkpoint command and returns a cached DataFrame" do
+        out = df.checkpoint
+        expect(out).to be_a(described_class)
+        cmd = fake_client.last_command
+        expect(cmd.command_type).to eq(:checkpoint_command)
+        expect(cmd.checkpoint_command.local).to be(false)
+      end
+
+      it "local_checkpoint sets local: true" do
+        df.local_checkpoint
+        expect(fake_client.last_command.checkpoint_command.local).to be(true)
+      end
+
+      it "observe builds a collect_metrics relation and binds an Observation" do
+        obs = SparkConnect::Observation.new("m")
+        out = df.observe(obs, f.count(f.lit(1)).alias("rows"))
+        expect(rel_type(out)).to eq(:collect_metrics)
+        expect(rel_body(out).name).to eq("m")
+        expect(rel_body(out).metrics.size).to eq(1)
+      end
+
+      it "observe accepts a plain String name" do
+        out = df.observe("named", f.count(f.lit(1)).alias("rows"))
+        expect(rel_body(out).name).to eq("named")
+      end
     end
   end
 end

@@ -103,7 +103,11 @@ module SparkConnect
       when Types::StringType, Types::CharType, Types::VarcharType then :string
       when Types::BinaryType then :binary
       when Types::DateType then :date32
-      when Types::TimestampType, Types::TimestampNTZType then { type: :timestamp, unit: :micro }
+      # TimestampType is an instant: tag it UTC so the server reads the epoch
+      # micros as a point in time rather than session-local wall-clock. The NTZ
+      # variant stays zone-less (wall-clock) to match its semantics.
+      when Types::TimestampType then ::Arrow::TimestampDataType.new(:micro, GLib::TimeZone.new("UTC"))
+      when Types::TimestampNTZType then { type: :timestamp, unit: :micro }
       when Types::ArrayType
         { type: :list, field: { name: "element", type: arrow_field_type(data_type.element_type) } }
       when Types::StructType

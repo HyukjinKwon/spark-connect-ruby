@@ -87,8 +87,53 @@ RSpec.describe SparkConnect::Column do
       expect(lit.map.value_type.has_integer?).to be(true)
     end
 
+    it "encodes a Rational as a double" do
+      expect(lit_type(Rational(1, 2))).to eq(:double)
+      expect(described_class.to_literal(Rational(1, 2)).double).to eq(0.5)
+    end
+
+    it "encodes a DateTime as a timestamp" do
+      dt = DateTime.new(1970, 1, 1, 0, 0, 1, "+00:00")
+      expect(lit_type(dt)).to eq(:timestamp)
+      expect(described_class.to_literal(dt).timestamp).to eq(1_000_000)
+    end
+
+    it "infers element types for a heterogeneous-but-nil-leading array" do
+      lit = described_class.to_literal([nil, 5])
+      expect(lit.literal_type).to eq(:array)
+      expect(lit.array.element_type.has_integer?).to be(true)
+    end
+
     it "raises on unsupported types" do
       expect { described_class.to_literal(Object.new) }.to raise_error(SparkConnect::IllegalArgumentError)
+    end
+  end
+
+  describe ".infer_type" do
+    it "maps Ruby values to Spark types" do
+      expect(described_class.infer_type(Rational(1, 3))).to be_a(SparkConnect::Types::DoubleType)
+      expect(described_class.infer_type(BigDecimal("1.5"))).to be_a(SparkConnect::Types::DecimalType)
+      expect(described_class.infer_type(Time.now)).to be_a(SparkConnect::Types::TimestampType)
+      expect(described_class.infer_type(Date.today)).to be_a(SparkConnect::Types::DateType)
+      expect(described_class.infer_type(:sym)).to be_a(SparkConnect::Types::StringType)
+      expect(described_class.infer_type({ "k" => 1 })).to be_a(SparkConnect::Types::MapType)
+    end
+
+    it "raises for an un-inferrable value" do
+      expect { described_class.infer_type(Object.new) }.to raise_error(SparkConnect::IllegalArgumentError)
+    end
+  end
+
+  describe "string and to_s helpers" do
+    it "builds a substr expression" do
+      e = SparkConnect::F.col("name").substr(1, 3).to_expr
+      expect(e.unresolved_function.function_name).to eq("substr")
+    end
+
+    it "renders to_s / inspect from the expression type" do
+      col = SparkConnect::F.col("x")
+      expect(col.to_s).to match(/\AColumn<.+>\z/)
+      expect(col.inspect).to eq(col.to_s)
     end
   end
 

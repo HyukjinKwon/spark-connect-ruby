@@ -7,6 +7,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.1] - 2026-06-15
+
+### Fixed
+
+- **Correct `TimestampType` instants in `create_data_frame`.** Timestamp columns
+  were shipped as zone-less Arrow timestamps, so the server interpreted the epoch
+  micros as session-local wall-clock and shifted the value by the session time
+  zone. They are now tagged UTC; `TimestampNTZType` remains zone-less.
+- **`RuntimeConfig#get` with a non-String default no longer raises.** A non-String
+  default (e.g. `conf.get(key, 8)`) was passed straight into a protobuf string
+  field, raising `Google::Protobuf::TypeError`. The default is now coerced to a
+  String, matching `#set`.
+- **No duplicate rows when an execute stream is retried.** The result accumulator
+  was created outside the retry loop, so a mid-stream gRPC failure replayed
+  already-consumed Arrow batches and duplicated rows on retry. The accumulator is
+  now reset per attempt.
+- **`DataFrame#drop_duplicates_within_watermark` is now watermark-aware.** It was a
+  plain alias of `#drop_duplicates` and never set the `within_watermark` flag, so
+  it silently performed an ordinary deduplication. Added a `dropDuplicatesWithinWatermark`
+  alias.
+- **`SparkSession::Builder#app_name` is now applied.** `create` explicitly skipped
+  `spark.app.name`, making `#app_name` a no-op; all builder options are now
+  forwarded to the new session.
+- Corrected misleading doc comments for `Functions#nanvl` and `DataFrame#except_all`.
+
 ## [0.2.0] - 2026-06-10
 
 ### Added
@@ -77,6 +102,7 @@ Initial release.
 - Vendored Spark Connect 4.1 protobuf/gRPC definitions and a regeneration script
   (`bin/generate-protos`).
 
-[Unreleased]: https://github.com/HyukjinKwon/spark-connect-ruby/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/HyukjinKwon/spark-connect-ruby/compare/v0.2.1...HEAD
+[0.2.1]: https://github.com/HyukjinKwon/spark-connect-ruby/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/HyukjinKwon/spark-connect-ruby/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/HyukjinKwon/spark-connect-ruby/releases/tag/v0.1.0

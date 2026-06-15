@@ -32,6 +32,20 @@ RSpec.describe SparkConnect::RuntimeConfig do
       expect(pair.key).to eq("missing.key")
       expect(pair.value).to eq("fallback")
     end
+
+    # Regression: a non-String default used to be passed straight into the
+    # protobuf `value` (a string field), raising Google::Protobuf::TypeError.
+    it "coerces a non-String default to a String" do
+      expect { conf.get("missing.key", 8) }.not_to raise_error
+      pair = client.config_operations.last.get_with_default.pairs.first
+      expect(pair.value).to eq("8")
+    end
+
+    it "coerces a boolean default to a String" do
+      conf.get("missing.flag", true)
+      pair = client.config_operations.last.get_with_default.pairs.first
+      expect(pair.value).to eq("true")
+    end
   end
 
   describe "#unset" do

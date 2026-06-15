@@ -153,6 +153,16 @@ RSpec.describe SparkConnect::SparkSession do
       expect(s1).not_to equal(s2)
     end
 
+    # Regression: create used to skip "spark.app.name", making #app_name a
+    # silent no-op. All builder options must be forwarded to the new session.
+    it "forwards all options including spark.app.name to the new session" do
+      fake = SpecHelpers::FakeClient.new
+      allow(SparkConnect::SparkConnectClient).to receive(:new).and_return(fake)
+      described_class.new.remote("sc://h:1").app_name("my-app").config("spark.sql.x", "1").create
+      set_keys = fake.config_operations.map { |op| op.set.pairs.first.key }
+      expect(set_keys).to include("spark.app.name", "spark.sql.x")
+    end
+
     it "get_or_create returns the active session if present" do
       active = fake_session(client)
       SparkConnect::SparkSession.active = active

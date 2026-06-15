@@ -308,7 +308,7 @@ module SparkConnect
         url = @remote || ENV["SPARK_REMOTE"] || "sc://localhost:15002"
         client = SparkConnectClient.new(ChannelBuilder.new(url))
         session = SparkSession.new(client)
-        @options.each { |k, v| session.conf.set(k, v) unless k == "spark.app.name" }
+        @options.each { |k, v| session.conf.set(k, v) }
         session
       end
       alias build create

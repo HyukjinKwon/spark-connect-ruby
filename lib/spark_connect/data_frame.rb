@@ -182,7 +182,24 @@ module SparkConnect
       build(deduplicate: dedup)
     end
     alias dropDuplicates drop_duplicates
-    alias drop_duplicates_within_watermark drop_duplicates
+
+    # Drop duplicate rows within the event-time watermark, optionally restricted
+    # to a subset of columns. Unlike {#drop_duplicates}, this is watermark-aware
+    # and is intended for streaming DataFrames (mirrors PySpark's
+    # `dropDuplicatesWithinWatermark`).
+    #
+    # @param subset [Array<String>, nil]
+    # @return [DataFrame]
+    def drop_duplicates_within_watermark(subset = nil)
+      dedup =
+        if subset.nil? || subset.empty?
+          Proto::Deduplicate.new(input: @relation, all_columns_as_keys: true, within_watermark: true)
+        else
+          Proto::Deduplicate.new(input: @relation, column_names: Array(subset).map(&:to_s), within_watermark: true)
+        end
+      build(deduplicate: dedup)
+    end
+    alias dropDuplicatesWithinWatermark drop_duplicates_within_watermark
 
     # ---- Ordering ----------------------------------------------------------
 
@@ -311,7 +328,7 @@ module SparkConnect
     end
     alias intersectAll intersect_all
 
-    # Rows in this DataFrame not in `other` (distinct).
+    # Rows in this DataFrame not in `other`, keeping duplicates - Spark's `EXCEPT ALL`.
     # @return [DataFrame]
     def except_all(other)
       set_op(other, :SET_OP_TYPE_EXCEPT, is_all: true)

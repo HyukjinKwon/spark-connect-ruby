@@ -180,4 +180,111 @@ RSpec.describe SparkConnect::SparkConnectClient do
       expect(client.release_session).to be_nil
     end
   end
+
+  describe "operation tags" do
+    let(:client) { build_client }
+
+    it "adds, de-duplicates, removes and clears tags" do
+      client.add_tag("a")
+      client.add_tag("a")
+      client.add_tag("b")
+      expect(client.tags).to eq(%w[a b])
+      client.remove_tag("a")
+      expect(client.tags).to eq(%w[b])
+      client.clear_tags
+      expect(client.tags).to eq([])
+    end
+
+    it "rejects an empty tag" do
+      expect { client.add_tag("") }.to raise_error(SparkConnect::IllegalArgumentError, /empty/)
+    end
+
+    it "rejects a tag containing a comma" do
+      expect { client.add_tag("a,b") }.to raise_error(SparkConnect::IllegalArgumentError, /','/)
+    end
+  end
+
+  describe "#interrupt" do
+    it "sends INTERRUPT_TYPE_ALL by default" do
+      client = build_client
+      stub = stub_for(client)
+      expect(stub).to receive(:interrupt) do |req, **|
+        expect(req.interrupt_type).to eq(:INTERRUPT_TYPE_ALL)
+        :ok
+      end
+      client.interrupt
+    end
+
+    it "carries the operation tag for type: :tag" do
+      client = build_client
+      stub = stub_for(client)
+      expect(stub).to receive(:interrupt) do |req, **|
+        expect(req.interrupt_type).to eq(:INTERRUPT_TYPE_TAG)
+        expect(req.operation_tag).to eq("t1")
+        :ok
+      end
+      client.interrupt(type: :tag, value: "t1")
+    end
+
+    it "carries the operation id for type: :operation_id" do
+      client = build_client
+      stub = stub_for(client)
+      expect(stub).to receive(:interrupt) do |req, **|
+        expect(req.interrupt_type).to eq(:INTERRUPT_TYPE_OPERATION_ID)
+        expect(req.operation_id).to eq("op-7")
+        :ok
+      end
+      client.interrupt(type: :operation_id, value: "op-7")
+    end
+  end
+
+  describe "#execute_plan accumulation" do
+    let(:relation) { SparkConnect::Proto::Relation.new(range: SparkConnect::Proto::Range.new(start: 0, end: 1, step: 1)) }
+
+    def arrow_response(data, rows)
+      SparkConnect::Proto::ExecutePlanResponse.new(
+        arrow_batch: SparkConnect::Proto::ExecutePlanResponse::ArrowBatch.new(data: data, row_count: rows)
+      )
+    end
+
+    it "accumulates arrow batches and the row count across responses" do
+      client = build_client
+      stub = stub_for(client)
+      allow(stub).to receive(:execute_plan).and_return([arrow_response("b1", 2), arrow_response("b2", 3)])
+      result = client.execute_plan(relation)
+      expect(result.arrow_batches).to eq(%w[b1 b2])
+      expect(result.row_count).to eq(5)
+    end
+
+    it "skips empty arrow batch payloads" do
+      client = build_client
+      stub = stub_for(client)
+      allow(stub).to receive(:execute_plan).and_return([arrow_response("", 0), arrow_response("b", 1)])
+      expect(client.execute_plan(relation).arrow_batches).to eq(%w[b])
+    end
+
+    # Regression: the accumulator used to live outside the retry block, so a
+    # mid-stream failure replayed already-seen batches and duplicated rows.
+    it "does not duplicate rows when the stream fails mid-way and is retried" do
+      client = build_client(max_retries: 3, retry_base_delay: 0.0)
+      stub = stub_for(client)
+      attempts = 0
+      allow(stub).to receive(:execute_plan) do
+        attempts += 1
+        if attempts == 1
+          # First attempt yields one batch, then the stream dies.
+          Enumerator.new do |y|
+            y << arrow_response("b1", 2)
+            raise GRPC::Unavailable, "stream dropped"
+          end
+        else
+          [arrow_response("b1", 2), arrow_response("b2", 3)]
+        end
+      end
+      result = client.execute_plan(relation)
+      expect(attempts).to eq(2)
+      expect(result.arrow_batches).to eq(%w[b1 b2])
+      expect(result.row_count).to eq(5)
+    end
+  end
 end

@@ -171,16 +171,20 @@ module SparkConnect
         tags: @tags
       )
 
-      result = ExecuteResult.new([], nil, nil, [], nil, 0)
-      result.pipeline_events = []
+      # Build the accumulator *inside* the retry block so that a mid-stream
+      # failure (which restarts the gRPC stream from the beginning) starts from
+      # a clean slate. Accumulating into a result created outside the block
+      # would re-append already-seen batches and duplicate rows on retry.
       with_retries do
+        result = ExecuteResult.new([], nil, nil, [], nil, 0)
+        result.pipeline_events = []
         responses = @stub.execute_plan(req, metadata: @metadata)
         responses.each do |resp|
           @server_side_session_id = resp.server_side_session_id unless resp.server_side_session_id.empty?
           accumulate(result, resp)
         end
+        result
       end
-      result
     end
 
     def accumulate(result, resp)

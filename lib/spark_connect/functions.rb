@@ -85,7 +85,7 @@ module SparkConnect
 
     # @return [Column] first non-null among the given columns.
     def coalesce(*cols) = Column.invoke("coalesce", *cols.map { |c| _col(c) })
-    # @return [Column] `value` if `col` is NaN else `col`.
+    # @return [Column] `col1` if it is not NaN, else `col2`.
     def nanvl(col1, col2) = Column.invoke("nanvl", _col(col1), _col(col2))
 
     # ---- Constructors of complex types ------------------------------------

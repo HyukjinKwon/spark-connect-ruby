@@ -56,5 +56,10 @@ Gemfile.lock
 .rspec_status
 .rubocop-cache/
 
+# Spark Connect server scratch (created when running the integration suite)
+/spark-warehouse/
+/metastore_db/
+derby.log
+
 # Generated YARD API docs (built by the Docs workflow before the Pages build)
 docs/api/

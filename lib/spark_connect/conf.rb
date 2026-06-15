@@ -39,7 +39,7 @@ module SparkConnect
           Op.new(get: CR::Get.new(keys: [key.to_s]))
         else
           Op.new(get_with_default: CR::GetWithDefault.new(
-            pairs: [Proto::KeyValue.new(key: key.to_s, value: default)]
+            pairs: [Proto::KeyValue.new(key: key.to_s, value: default.to_s)]
           ))
         end
       resp = @client.config(op)

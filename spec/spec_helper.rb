@@ -1,5 +1,14 @@
 # frozen_string_literal: true
 
+if ENV["COVERAGE"]
+  require "simplecov"
+  SimpleCov.start do
+    add_filter "/spec/"
+    add_filter "/lib/spark_connect/proto/" # generated protobuf stubs
+    enable_coverage :branch
+  end
+end
+
 require "spark-connect"
 
 # Load shared support files (e.g. the integration-suite live-session helper).

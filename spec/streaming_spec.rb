@@ -67,9 +67,123 @@ RSpec.describe "Structured Streaming" do
     end
   end
 
+  describe SparkConnect::StreamingQuery do
+    let(:instance_id) { SparkConnect::Proto::StreamingQueryInstanceId.new(id: "qid", run_id: "rid") }
+    let(:query) { described_class.new(session, instance_id, "myq") }
+
+    def query_result(**kw)
+      sqr = SparkConnect::Proto::StreamingQueryCommandResult.new(**kw)
+      SparkConnect::SparkConnectClient::ExecuteResult.new.tap { |r| r.streaming_query_result = sqr }
+    end
+
+    it "captures the id, run_id and name (blank name becomes nil)" do
+      expect(query.id).to eq("qid")
+      expect(query.run_id).to eq("rid")
+      expect(query.name).to eq("myq")
+      expect(described_class.new(session, instance_id, "").name).to be_nil
+    end
+
+    it "reports status and active?" do
+      status = SparkConnect::Proto::StreamingQueryCommandResult::StatusResult.new(
+        status_message: "Waiting", is_data_available: true, is_trigger_active: false, is_active: true
+      )
+      allow(client).to receive(:execute_command).and_return(query_result(status: status))
+      expect(query.status).to eq({
+                                   "message" => "Waiting", "isDataAvailable" => true,
+                                   "isTriggerActive" => false, "isActive" => true,
+                                 })
+      expect(query.active?).to be(true)
+    end
+
+    it "parses recent_progress and last_progress JSON" do
+      rp = SparkConnect::Proto::StreamingQueryCommandResult::RecentProgressResult.new(
+        recent_progress_json: ['{"batchId":0}', '{"batchId":1}']
+      )
+      allow(client).to receive(:execute_command).and_return(query_result(recent_progress: rp))
+      expect(query.recent_progress).to eq([{ "batchId" => 0 }, { "batchId" => 1 }])
+      expect(query.last_progress).to eq({ "batchId" => 1 })
+    end
+
+    it "returns await_termination's terminated flag" do
+      at = SparkConnect::Proto::StreamingQueryCommandResult::AwaitTerminationResult.new(terminated: true)
+      allow(client).to receive(:execute_command).and_return(query_result(await_termination: at))
+      expect(query.await_termination(1000)).to be(true)
+    end
+
+    it "process_all_available and stop send commands and return nil" do
+      allow(client).to receive(:execute_command).and_return(query_result)
+      expect(query.process_all_available).to be_nil
+      expect(query.stop).to be_nil
+    end
+
+    it "returns nil exception message when empty, the message otherwise" do
+      empty = SparkConnect::Proto::StreamingQueryCommandResult::ExceptionResult.new(exception_message: "")
+      allow(client).to receive(:execute_command).and_return(query_result(exception: empty))
+      expect(query.exception).to be_nil
+
+      boom = SparkConnect::Proto::StreamingQueryCommandResult::ExceptionResult.new(exception_message: "boom")
+      allow(client).to receive(:execute_command).and_return(query_result(exception: boom))
+      expect(query.exception).to eq("boom")
+    end
+
+    it "explains the query plan" do
+      ex = SparkConnect::Proto::StreamingQueryCommandResult::ExplainResult.new(result: "== Plan ==")
+      allow(client).to receive(:execute_command).and_return(query_result(explain: ex))
+      expect(query.explain(extended: true)).to eq("== Plan ==")
+    end
+
+    it "has a readable to_s / inspect" do
+      expect(query.to_s).to include("id=qid")
+      expect(query.inspect).to eq(query.to_s)
+    end
+  end
+
   describe SparkConnect::StreamingQueryManager do
+    let(:manager) { described_class.new(session) }
+
+    def manager_result(**kw)
+      mr = SparkConnect::Proto::StreamingQueryManagerCommandResult.new(**kw)
+      SparkConnect::SparkConnectClient::ExecuteResult.new.tap { |r| r.streaming_manager_result = mr }
+    end
+
+    def instance(id, name)
+      SparkConnect::Proto::StreamingQueryManagerCommandResult::StreamingQueryInstance.new(
+        id: SparkConnect::Proto::StreamingQueryInstanceId.new(id: id, run_id: "r-#{id}"), name: name
+      )
+    end
+
     it "is reachable from the session" do
       expect(session.streams).to be_a(described_class)
+    end
+
+    it "lists active queries" do
+      active = SparkConnect::Proto::StreamingQueryManagerCommandResult::ActiveResult.new(
+        active_queries: [instance("a", "qa"), instance("b", "qb")]
+      )
+      allow(client).to receive(:execute_command).and_return(manager_result(active: active))
+      queries = manager.active
+      expect(queries.map(&:id)).to eq(%w[a b])
+      expect(queries.first).to be_a(SparkConnect::StreamingQuery)
+    end
+
+    it "gets a query by id when present" do
+      result = manager_result(query: instance("a", "qa"))
+      allow(client).to receive(:execute_command).and_return(result)
+      expect(manager.get("a").id).to eq("a")
+    end
+
+    it "returns nil from get when the result is not a query" do
+      allow(client).to receive(:execute_command).and_return(manager_result(reset_terminated: true))
+      expect(manager.get("missing")).to be_nil
+    end
+
+    it "awaits any termination and resets terminated state" do
+      at = SparkConnect::Proto::StreamingQueryManagerCommandResult::AwaitAnyTerminationResult.new(terminated: true)
+      allow(client).to receive(:execute_command).and_return(manager_result(await_any_termination: at))
+      expect(manager.await_any_termination(500)).to be(true)
+
+      allow(client).to receive(:execute_command).and_return(manager_result(reset_terminated: true))
+      expect(manager.reset_terminated).to be_nil
     end
   end
 
