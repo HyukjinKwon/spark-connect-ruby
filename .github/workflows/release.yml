@@ -5,8 +5,7 @@ on:
     tags: ["v*"]
 
 permissions:
-  contents: write
-  id-token: write # for RubyGems trusted publishing (OIDC)
+  contents: write # for creating the GitHub release
 
 jobs:
   release:
@@ -45,10 +44,11 @@ jobs:
         with:
           generate_release_notes: true
 
-      # Publish via RubyGems trusted publishing (configure the gem's trusted
-      # publisher in your RubyGems account; no API key secret required).
-      # Best-effort: the GitHub release above still succeeds if trusted
-      # publishing has not been configured yet.
+      # Publish to RubyGems using an API key stored as the GEM_TOKEN repository
+      # secret. (Set GEM_TOKEN to a rubygems.org API key with "push" scope.)
       - name: Publish to RubyGems
-        continue-on-error: true
-        uses: rubygems/release-gem@v1
+        env:
+          GEM_HOST_API_KEY: ${{ secrets.GEM_TOKEN }}
+        run: |
+          gem build spark-connect.gemspec
+          gem push spark-connect-*.gem
