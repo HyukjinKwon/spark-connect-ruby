@@ -1,6 +1,3 @@
-# --- Local-only agent / coordination artifacts (never published) ---
-# All inter-agent communication and planning lives under .build/ and is
-# deliberately kept out of the published repository.
 .build/
 .hjk_work/
 NOTES/
