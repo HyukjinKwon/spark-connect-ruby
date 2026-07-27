@@ -73,6 +73,9 @@ jobs:
         # with `NoClassDefFoundError: scala/collection/StringOps$`, so we must
         # use the Scala 2.13 distribution AND add the matching _2.13 package.
         include:
+          - spark: "4.2.0"
+            dist: spark-4.2.0-bin-hadoop3
+            packages: ""
           - spark: "4.1.0"
             dist: spark-4.1.0-bin-hadoop3
             packages: ""
