@@ -74,6 +74,8 @@ module Spark
         # The request can optionally specify a custom session ID for the cloned session (must be
         # a valid UUID). If not provided, a new UUID will be generated automatically.
         rpc :CloneSession, ::Spark::Connect::CloneSessionRequest, ::Spark::Connect::CloneSessionResponse
+        # Get status information of different types.
+        rpc :GetStatus, ::Spark::Connect::GetStatusRequest, ::Spark::Connect::GetStatusResponse
       end
 
       Stub = Service.rpc_stub_class
