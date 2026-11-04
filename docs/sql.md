@@ -11,6 +11,14 @@ DataFrame API. Every `spark.sql(...)` call returns a lazy
 [`DataFrame`]({{ "/dataframe.html" | relative_url }}) -- nothing executes until
 you call an action such as `show`, `collect`, or `count`.
 
+That includes commands: a `CREATE`, `INSERT`, `DROP`, or other statement runs
+when you call an action on its DataFrame, whereas PySpark runs commands inside
+`spark.sql` itself. Call `collect` to run one right away:
+
+```ruby
+spark.sql("CREATE OR REPLACE TEMP VIEW nums AS SELECT * FROM range(5)").collect
+```
+
 If you have used PySpark's `spark.sql`, this is the same idea: snake_case method
 names, and parameters passed as a Hash (named) or an Array (positional).
 
@@ -44,7 +52,9 @@ or an **Array** (positional parameters).
 
 Parameter binding is the safe way to inject values into SQL: the values are sent
 to the server as typed expressions rather than spliced into the query string, so
-there is no string-escaping or SQL-injection risk.
+there is no string-escaping or SQL-injection risk. Like PySpark 4.x, the client
+sends parameters in the form Spark 4.0 introduced, so binding needs a Spark 4.0+
+server.
 
 ### Named parameters (Hash)
 

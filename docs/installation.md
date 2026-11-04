@@ -51,7 +51,7 @@ A quick smoke test that the gem and its native Arrow dependency load:
 ```ruby
 require "spark-connect"
 
-puts SparkConnect::VERSION         # => the gem version, e.g. "0.1.0"
+puts SparkConnect::VERSION         # => the gem version, e.g. "0.4.0"
 puts SparkConnect::SPARK_VERSION   # => the Spark Connect protocol line, e.g. "4.3.0"
 ```
 
@@ -64,8 +64,8 @@ To run anything beyond loading the gem you need a Spark Connect server to talk
 to. You do **not** need Spark on your client app machine -- only wherever the
 server runs.
 
-1. **Download a Spark distribution** (3.4+; this client is tested against 3.5.x
-   and 4.x). Pick a release from the
+1. **Download a Spark distribution** (3.5 or newer; CI tests the client against
+   Spark 3.5.5, 4.0.0, 4.1.0, 4.2.0, and 4.3.0). Pick a release from the
    [Spark downloads page](https://spark.apache.org/downloads.html), or fetch one
    directly:
 

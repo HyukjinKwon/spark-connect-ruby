@@ -12,6 +12,7 @@
 #
 # Parameters are passed as the optional second argument to spark.sql: a Hash
 # binds named markers (:name / `:name`), an Array binds positional `?` markers.
+# Parameter binding needs a Spark 4.0+ server.
 #
 # Run with a live Spark Connect server:
 #   export SPARK_REMOTE="sc://localhost:15002"
@@ -56,8 +57,8 @@ people = spark.create_data_frame(
 
 # Register the relation as a session-scoped temporary view. We round-trip the
 # rows through an inline VALUES temp view so the view is independent of the
-# original DataFrame plan.
-spark.sql(<<~SQL)
+# original DataFrame plan. spark.sql is lazy, so collect runs the statement.
+spark.sql(<<~SQL).collect
   CREATE OR REPLACE TEMP VIEW people AS
   SELECT * FROM VALUES
     ('Alice', 30),

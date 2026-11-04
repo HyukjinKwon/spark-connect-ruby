@@ -7,8 +7,9 @@ work, prints results, and calls `spark.stop` at the end.
 ## Prerequisites
 
 - Ruby >= 3.1 with the gem and its dependencies installed.
-- A running Spark Connect server (Spark 4.1.x). The examples default to
-  `sc://localhost:15002`.
+- A running Spark Connect server: Apache Spark 3.5 or newer, except that the
+  parameterized queries in `06_sql.rb` need Spark 4.0+ and `11_pipeline.rb`
+  needs Spark 4.1+. The examples default to `sc://localhost:15002`.
 
 ## Running
 

@@ -68,15 +68,16 @@ cat.function_exists("explode")          #=> true
 Register a temporary view with a SQL `CREATE` statement, query it through
 `SparkSession#sql` or `SparkSession#table`, then drop it through the catalog.
 The `drop_*` methods return a boolean indicating whether a view was removed.
+`spark.sql` is lazy, so `collect` runs each `CREATE` statement.
 
 ```ruby
 # Create a session-local temp view.
-spark.sql("CREATE OR REPLACE TEMPORARY VIEW nums AS SELECT * FROM range(5)")
+spark.sql("CREATE OR REPLACE TEMPORARY VIEW nums AS SELECT * FROM range(5)").collect
 spark.table("nums").show
 spark.sql("SELECT id * id AS sq FROM nums").show
 
 # Create a global temp view (lives in the global_temp database).
-spark.sql("CREATE GLOBAL TEMPORARY VIEW global_nums AS SELECT * FROM range(5)")
+spark.sql("CREATE GLOBAL TEMPORARY VIEW global_nums AS SELECT * FROM range(5)").collect
 spark.table("global_temp.global_nums").show
 
 # Drop views through the catalog.
