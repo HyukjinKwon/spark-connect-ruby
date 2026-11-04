@@ -114,6 +114,30 @@ cat.refresh_table("my_table")
 cat.recover_partitions("my_partitioned_table")
 ```
 
+## Creating and dropping objects (Spark 4.2+)
+
+```ruby
+cat.create_database("analytics", if_not_exists: true, properties: { "comment" => "BI tables" })
+cat.drop_table("analytics.old_events", if_exists: true, purge: true)
+cat.drop_view("analytics.v", if_exists: true)
+cat.drop_database("analytics", if_exists: true, cascade: true)
+```
+
+## Inspecting and maintaining tables (Spark 4.2+)
+
+```ruby
+cat.list_views("analytics", "daily_*")         # Array<Row>, like list_tables
+cat.list_partitions("analytics.events")        # Rows with a `partition` String, e.g. "day=2026-06-10"
+cat.get_table_properties("analytics.events")   # => {"owner" => "etl", ...}
+cat.get_create_table_string("analytics.events") # the SHOW CREATE TABLE DDL
+cat.analyze_table("analytics.events", no_scan: true)
+cat.truncate_table("analytics.scratch")
+```
+
+`get_database`, `get_table`, and `get_function` return a single `Row`, and the
+listing methods accept a SQL `LIKE` pattern (`list_tables(db, "fact_*")`).
+`refresh_by_path(path)` refreshes everything cached under a path.
+
 ## Method summary
 
 | Method                                   | Returns        | Purpose                              |
@@ -123,20 +147,34 @@ cat.recover_partitions("my_partitioned_table")
 | `list_catalogs`                          | `Array<Row>`   | all catalogs                         |
 | `current_database`                       | `String`       | active database name                 |
 | `set_current_database(name)`             | `nil`          | switch database                      |
-| `list_databases`                         | `Array<Row>`   | all databases                        |
+| `list_databases(pattern = nil)`          | `Array<Row>`   | databases                            |
+| `get_database(db)`                       | `Row`          | one database                         |
 | `database_exists(db)`                    | `Boolean`      | database presence                    |
-| `list_tables(db = nil)`                  | `Array<Row>`   | tables and views                     |
+| `create_database(db, if_not_exists:, properties:)` | `nil` | create a database (4.2+)         |
+| `drop_database(db, if_exists:, cascade:)` | `nil`         | drop a database (4.2+)               |
+| `list_tables(db = nil, pattern = nil)`   | `Array<Row>`   | tables and views                     |
+| `list_views(db = nil, pattern = nil)`    | `Array<Row>`   | views only (4.2+)                    |
+| `get_table(name)`                        | `Row`          | one table or view                    |
 | `table_exists(name, db = nil)`           | `Boolean`      | table/view presence                  |
+| `drop_table(name, if_exists:, purge:)`   | `nil`          | drop a table (4.2+)                  |
+| `drop_view(name, if_exists:)`            | `nil`          | drop a view (4.2+)                   |
 | `list_columns(table, db = nil)`          | `Array<Row>`   | a table's columns                    |
-| `list_functions(db = nil)`               | `Array<Row>`   | registered functions                 |
+| `list_partitions(table)`                 | `Array<Row>`   | partitions (4.2+)                    |
+| `get_table_properties(table)`            | `Hash`         | table properties (4.2+)              |
+| `get_create_table_string(table, as_serde:)` | `String`    | `SHOW CREATE TABLE` (4.2+)           |
+| `truncate_table(table)`                  | `nil`          | remove all rows (4.2+)               |
+| `analyze_table(table, no_scan:)`         | `nil`          | compute statistics (4.2+)            |
+| `list_functions(db = nil, pattern = nil)` | `Array<Row>`  | registered functions                 |
+| `get_function(name)`                     | `Row`          | one function                         |
 | `function_exists(name, db = nil)`        | `Boolean`      | function presence                    |
 | `drop_temp_view(name)`                   | `Boolean`      | drop a session temp view             |
 | `drop_global_temp_view(name)`            | `Boolean`      | drop a global temp view              |
 | `cached?(table)`                         | `Boolean`      | is the table cached                  |
-| `cache_table(table)`                     | `nil`          | cache in memory                      |
+| `cache_table(table, storage_level = nil)` | `nil`         | cache (optionally at a storage level) |
 | `uncache_table(table)`                   | `nil`          | remove from cache                    |
 | `clear_cache`                            | `nil`          | clear all cached tables              |
 | `refresh_table(table)`                   | `nil`          | refresh cached metadata              |
+| `refresh_by_path(path)`                  | `nil`          | refresh everything under a path      |
 | `recover_partitions(table)`              | `nil`          | rediscover partitions                |
 
 ## See also

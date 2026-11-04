@@ -31,6 +31,8 @@ module SparkConnect
       @sort_columns = []
       @bucket_cols = nil
       @num_buckets = nil
+      @clustering_columns = []
+      @schema_evolution = false
     end
 
     # @return [self] set the output format.
@@ -40,25 +42,48 @@ module SparkConnect
     end
 
     # @return [self] set the save mode (`:append`, `:overwrite`, `:ignore`,
-    #   `:error`).
+    #   `:error`). `nil` keeps the current mode.
     def mode(save_mode)
+      return self if save_mode.nil?
+
       @mode = SAVE_MODES.fetch(save_mode.to_s.downcase.to_sym) do
         raise IllegalArgumentError, "Unknown save mode: #{save_mode}"
       end
       self
     end
 
-    # @return [self] set a write option.
+    # @return [self] set a write option (a `nil` value is ignored).
     def option(key, value)
-      @options[key.to_s] = value.to_s
+      @options[key.to_s] = value.to_s unless value.nil?
       self
     end
 
     # @return [self] set multiple write options.
     def options(opts)
-      opts.each { |k, v| @options[k.to_s] = v.to_s }
+      opts.each { |k, v| option(k, v) }
       self
     end
+
+    # @return [self] cluster the output (e.g. liquid clustering) by these columns.
+    def cluster_by(*cols)
+      cols = cols.flatten.map(&:to_s)
+      raise IllegalArgumentError, "cluster_by needs one or more clustering columns" if cols.empty?
+
+      @clustering_columns = cols
+      self
+    end
+    alias clusterBy cluster_by
+
+    # Enable automatic schema evolution for this write (Spark 4.2+); the target
+    # table must declare the `AUTOMATIC_SCHEMA_EVOLUTION` capability. This is
+    # the Scala API's `withSchemaEvolution` (PySpark exposes it only on
+    # {MergeIntoWriter}).
+    # @return [self]
+    def with_schema_evolution
+      @schema_evolution = true
+      self
+    end
+    alias withSchemaEvolution with_schema_evolution
 
     # @return [self] partition the output by these columns.
     def partition_by(*cols)
@@ -115,13 +140,27 @@ module SparkConnect
     def csv(path) = format("csv").save(path)
     def orc(path) = format("orc").save(path)
     def text(path) = format("text").save(path)
+    # @return [void] convenience for `format("xml").save(path)` (set `option("rowTag", ...)`).
+    def xml(path) = format("xml").save(path)
+
+    # Write to a JDBC table.
+    #
+    # @param url [String]
+    # @param table [String]
+    # @param mode [Symbol, String, nil] the save mode.
+    # @param properties [Hash] connection properties (`user`, `password`, ...).
+    # @return [void]
+    def jdbc(url, table, mode = nil, properties = {})
+      format("jdbc").mode(mode).options(properties.transform_keys(&:to_s)).options("url" => url, "dbtable" => table).save
+    end
 
     private
 
     def base_operation
       op = WO.new(
         input: @df.relation, mode: @mode, options: @options,
-        partitioning_columns: @partitioning_columns, sort_column_names: @sort_columns
+        partitioning_columns: @partitioning_columns, sort_column_names: @sort_columns,
+        clustering_columns: @clustering_columns, with_schema_evolution: @schema_evolution
       )
       op.source = @source if @source
       op.bucket_by = WO::BucketBy.new(bucket_column_names: @bucket_cols, num_buckets: @num_buckets) if @num_buckets
@@ -153,6 +192,8 @@ module SparkConnect
       @options = {}
       @table_properties = {}
       @partitioning = []
+      @clustering_columns = []
+      @schema_evolution = false
     end
 
     # @return [self] set the table provider/format.
@@ -161,9 +202,15 @@ module SparkConnect
       self
     end
 
-    # @return [self] set a write option.
+    # @return [self] set a write option (a `nil` value is ignored).
     def option(key, value)
-      @options[key.to_s] = value.to_s
+      @options[key.to_s] = value.to_s unless value.nil?
+      self
+    end
+
+    # @return [self] set multiple write options.
+    def options(opts)
+      opts.each { |k, v| option(k, v) }
       self
     end
 
@@ -172,12 +219,32 @@ module SparkConnect
       @table_properties[key.to_s] = value.to_s
       self
     end
+    alias tableProperty table_property
 
-    # @return [self] partition by the given expressions/columns.
-    def partition_by(*cols)
+    # Partition the table by columns or partition transforms (`F.years("ts")`,
+    # `F.bucket(4, "id")`, ...).
+    # @return [self]
+    def partitioned_by(*cols)
       @partitioning = cols.flatten.map { |c| (c.is_a?(Column) ? c : Functions.col(c.to_s)).to_expr }
       self
     end
+    alias partition_by partitioned_by
+    alias partitionedBy partitioned_by
+
+    # @return [self] cluster the table by these columns.
+    def cluster_by(*cols)
+      @clustering_columns = cols.flatten.map(&:to_s)
+      self
+    end
+    alias clusterBy cluster_by
+
+    # Enable automatic schema evolution for this write (Spark 4.2+).
+    # @return [self]
+    def with_schema_evolution
+      @schema_evolution = true
+      self
+    end
+    alias withSchemaEvolution with_schema_evolution
 
     # Create the table. @return [void]
     def create = run(:MODE_CREATE)
@@ -185,19 +252,22 @@ module SparkConnect
     def replace = run(:MODE_REPLACE)
     # Create or replace the table. @return [void]
     def create_or_replace = run(:MODE_CREATE_OR_REPLACE)
+    alias createOrReplace create_or_replace
     # Append rows. @return [void]
     def append = run(:MODE_APPEND)
     # Overwrite rows matching `condition`. @return [void]
     def overwrite(condition) = run(:MODE_OVERWRITE, overwrite_condition: Column.to_col(condition).to_expr)
     # Dynamically overwrite partitions. @return [void]
     def overwrite_partitions = run(:MODE_OVERWRITE_PARTITIONS)
+    alias overwritePartitions overwrite_partitions
 
     private
 
     def run(mode, overwrite_condition: nil)
       op = WO2.new(
         input: @df.relation, table_name: @table, mode: mode,
-        options: @options, table_properties: @table_properties, partitioning_columns: @partitioning
+        options: @options, table_properties: @table_properties, partitioning_columns: @partitioning,
+        clustering_columns: @clustering_columns, with_schema_evolution: @schema_evolution
       )
       op.provider = @provider if @provider
       op.overwrite_condition = overwrite_condition if overwrite_condition

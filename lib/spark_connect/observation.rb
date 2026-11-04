@@ -47,15 +47,36 @@ module SparkConnect
       result = @df.session.client.execute_plan(@df.relation)
       observed = result.observed_metrics.find { |m| m.name == @name } || result.observed_metrics.first
       return {} unless observed
+      # Spark 4.2+ reports a failure to compute the metrics (e.g. an error in a
+      # metric expression) in the metrics message instead of failing the query.
+      raise Observation.error_from(observed) if observed.has_root_error_idx?
 
       keys = observed.keys.to_a
-      decoded = observed.values.map { |lit| decode_literal(lit) }
-      keys.zip(decoded).to_h
+      keys = Array.new(observed.values.size) { |i| "observed_metric_#{i}" } if keys.empty?
+      keys.zip(observed.values.map { |lit| Column.literal_value(lit) }).to_h
     end
 
-    def decode_literal(literal)
-      kind = literal.literal_type
-      kind ? literal.public_send(kind) : nil
+    class << self
+      # Convert the error payload of an observed-metrics message into the
+      # matching {SparkConnectError} subclass.
+      # @api private
+      def error_from(observed)
+        errors = observed.errors.to_a
+        idx = observed.root_error_idx
+        return SparkConnectError.new("Observation error: invalid root_error_idx #{idx}") unless idx.between?(0, errors.size - 1)
+
+        root = errors[idx]
+        hierarchy = root.error_type_hierarchy.to_a
+        klass =
+          if hierarchy.any? { |c| c.end_with?("ParseException") } then ParseError
+          elsif hierarchy.any? { |c| c.end_with?("AnalysisException") } then AnalysisError
+          else SparkConnectError
+          end
+        throwable = root.spark_throwable
+        klass.new(root.message,
+                  error_class: throwable&.has_error_class? ? throwable.error_class : nil,
+                  sql_state: throwable&.has_sql_state? ? throwable.sql_state : nil)
+      end
     end
   end
 end

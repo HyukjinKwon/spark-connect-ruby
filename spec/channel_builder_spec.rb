@@ -61,11 +61,12 @@ RSpec.describe SparkConnect::ChannelBuilder do
 
   describe "parameters" do
     it "captures the recognised parameters" do
-      b = cb("sc://host/;token=abc;user_id=u1;session_id=sess-1")
+      sid = "11111111-2222-3333-4444-555555555555"
+      b = cb("sc://host/;token=abc;user_id=u1;session_id=#{sid}")
       expect(b.token).to eq("abc")
       expect(b.user_id).to eq("u1")
-      expect(b.session_id).to eq("sess-1")
-      expect(b.params).to include("token" => "abc", "user_id" => "u1", "session_id" => "sess-1")
+      expect(b.session_id).to eq(sid)
+      expect(b.params).to include("token" => "abc", "user_id" => "u1", "session_id" => sid)
     end
 
     it "URL-decodes parameter keys and values" do

@@ -26,7 +26,7 @@ module SpecHelpers
   # plans/commands/requests it receives and returns configurable canned results.
   class FakeClient
     attr_accessor :rows, :schema, :spark_version
-    attr_reader :executed_relations, :executed_commands, :analyze_requests, :config_operations
+    attr_reader :executed_relations, :executed_commands, :analyze_requests, :config_operations, :progress_handlers
 
     def initialize(rows: nil, schema: nil)
       @rows = rows
@@ -40,7 +40,7 @@ module SpecHelpers
       @interrupts = []
     end
 
-    def session_id = "test-session-id"
+    def session_id = @fake_session_id || "test-session-id"
 
     def last_relation = @executed_relations.last
     def last_command = @executed_commands.last
@@ -101,6 +101,11 @@ module SpecHelpers
         when :input_files then Proto::AnalyzePlanResponse::InputFiles.new(files: [])
         when :semantic_hash then Proto::AnalyzePlanResponse::SemanticHash.new(result: 42)
         when :same_semantics then Proto::AnalyzePlanResponse::SameSemantics.new(result: true)
+        when :persist then Proto::AnalyzePlanResponse::Persist.new
+        when :unpersist then Proto::AnalyzePlanResponse::Unpersist.new
+        when :get_storage_level
+          Proto::AnalyzePlanResponse::GetStorageLevel.new(storage_level: SparkConnect::StorageLevel::MEMORY_ONLY.to_proto)
+        when :ddl_parse then Proto::AnalyzePlanResponse::DDLParse.new(parsed: (@schema || default_schema).to_proto)
         else Proto::AnalyzePlanResponse::IsLocal.new(is_local: true) # rubocop:disable Lint/DuplicateBranch
         end
       Proto::AnalyzePlanResponse.new(session_id: session_id, key => result)
@@ -117,6 +122,24 @@ module SpecHelpers
     end
 
     def release_session = nil
+
+    # --- lifecycle / session derivation (mirrors SparkConnectClient) ---
+    def close = (@closed = true)
+    def closed? = !!@closed
+
+    def new_session_client
+      FakeClient.new(rows: @rows, schema: @schema).tap { |c| c.fake_session_id = SecureRandom.uuid }
+    end
+
+    def clone_session(new_session_id = nil)
+      FakeClient.new(rows: @rows, schema: @schema).tap { |c| c.fake_session_id = new_session_id || SecureRandom.uuid }
+    end
+
+    attr_writer :fake_session_id
+
+    def register_progress_handler(handler) = (@progress_handlers ||= []) << handler
+    def remove_progress_handler(handler) = @progress_handlers&.delete(handler)
+    def clear_progress_handlers = @progress_handlers&.clear
 
     # --- operation tags (mirrors SparkConnectClient) ---
     attr_reader :tags, :interrupts
@@ -189,4 +212,10 @@ RSpec.configure do |config|
   config.disable_monkey_patching!
   config.order = :random
   Kernel.srand(config.seed)
+  # Sessions built by one example must not leak into another as the
+  # process-wide default/active session.
+  config.after do
+    SparkConnect::SparkSession.clear_active_session
+    SparkConnect::SparkSession.clear_default_session
+  end
 end

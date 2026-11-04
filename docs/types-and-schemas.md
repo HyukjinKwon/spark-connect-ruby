@@ -19,6 +19,9 @@ T.long; T.integer; T.short; T.byte
 T.double; T.float; T.decimal(10, 2)
 T.string; T.binary; T.boolean
 T.date; T.timestamp; T.timestamp_ntz
+T.time(6)                        # TIME(p), Spark 4.1+ (spark.sql.timeType.enabled)
+T.geometry(4326); T.geography("ANY")   # spatial types, Spark 4.1+
+T.timestamp_ntz_nanos(9); T.timestamp_ltz_nanos(9)  # Spark 4.3 preview (spark.sql.timestampNanosTypes.enabled)
 T.array(T.string)
 T.map(T.string, T.long)
 T.struct(
@@ -94,4 +97,12 @@ follows (and the inverse applies when decoding results):
 
 Results decode back into `SparkConnect::Row` objects, with structs as `Row`/Hash,
 arrays as `Array`, maps as `Hash`, decimals as `BigDecimal`, timestamps as
-`Time`, and dates as `Date`.
+`Time` (nanosecond timestamps keep their nanoseconds, `Time#nsec`), dates as
+`Date`, and TIME values as `Arrow::Time` (with `#hour`, `#minute`, `#second`,
+`#nsec`, and `#to_s` such as `"12:34:56.789"`).
+
+Schemas containing user-defined types decode to `Types::UserDefinedType`, which
+carries the class name and the underlying `sql_type` that its values decode as.
+
+Decimal literals (`F.lit(BigDecimal("1.5"))`) are sent like PySpark's: tagged
+`decimal(10, 0)`, which the server widens to fit the value (here `decimal(10, 1)`).

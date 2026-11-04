@@ -126,6 +126,13 @@ RSpec.describe "Structured Streaming" do
       expect(query.exception).to eq("boom")
     end
 
+    # Regression: a healthy query has no ExceptionResult at all, which used to
+    # raise NoMethodError.
+    it "returns nil when the server omits the exception result" do
+      allow(client).to receive(:execute_command).and_return(query_result)
+      expect(query.exception).to be_nil
+    end
+
     it "explains the query plan" do
       ex = SparkConnect::Proto::StreamingQueryCommandResult::ExplainResult.new(result: "== Plan ==")
       allow(client).to receive(:execute_command).and_return(query_result(explain: ex))

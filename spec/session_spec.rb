@@ -159,8 +159,10 @@ RSpec.describe SparkConnect::SparkSession do
       fake = SpecHelpers::FakeClient.new
       allow(SparkConnect::SparkConnectClient).to receive(:new).and_return(fake)
       described_class.new.remote("sc://h:1").app_name("my-app").config("spark.sql.x", "1").create
-      set_keys = fake.config_operations.map { |op| op.set.pairs.first.key }
+      set_keys = fake.config_operations.flat_map { |op| op.set.pairs.map(&:key) }
       expect(set_keys).to include("spark.app.name", "spark.sql.x")
+      # Like PySpark, the options are applied in one silent request.
+      expect(fake.config_operations.last.set.silent).to be(true)
     end
 
     it "get_or_create returns the active session if present" do

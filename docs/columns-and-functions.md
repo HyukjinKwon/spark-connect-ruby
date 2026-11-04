@@ -19,8 +19,9 @@ F = SparkConnect::F
 F.col("age")          # by name
 F.lit(42)             # a literal value
 F.expr("age + 1")     # a SQL expression string
-df["age"]             # indexing a DataFrame
+df["age"]             # a column bound to `df` (unambiguous in self-joins)
 F.col("*")            # all columns
+F.col("t.*")          # all columns of the aliased relation `t`
 ```
 
 `F.lit` accepts `nil`, booleans, integers, floats, strings, symbols, `Time`,
@@ -48,6 +49,10 @@ F.col("flag").eq_null_safe(nil)   # null-safe equality (<=>)
 | Comparison | `== != < <= > >=`, `eq_null_safe` |
 | Boolean    | `& | !`, `not` |
 | Predicates | `is_null`, `is_not_null`, `is_nan`, `between`, `isin`, `like`, `rlike`, `ilike`, `contains`, `startswith`, `endswith` |
+| Bitwise    | `bitwise_and`, `bitwise_or`, `bitwise_xor` (`bitwiseAND`, ...) |
+
+`isin` also accepts a single-column DataFrame, building an `IN (subquery)`
+(Spark 4.1+): `F.col("id").isin(other.select("id"))`.
 
 ## Aliasing, casting, and ordering
 
@@ -55,7 +60,9 @@ F.col("flag").eq_null_safe(nil)   # null-safe equality (<=>)
 (F.col("a") + F.col("b")).alias("sum")
 F.col("amount").cast("decimal(10,2)")
 F.col("amount").cast(SparkConnect::Types.double)
+F.col("amount").try_cast("int")   # null instead of an error (Spark 4.0+)
 F.col("score").desc          # sort order (also asc, asc_nulls_last, ...)
+F.col("x").transform { |c| c * 2 }  # apply a custom function
 ```
 
 ## Conditionals
@@ -72,14 +79,33 @@ F.when(F.col("score") >= 90, "A")
 ```ruby
 F.col("tags")[0]            # array element / map value / struct field
 F.col("address").get_field("city")
+F.col("address").with_field("zip", F.lit("00000"))   # add or replace a struct field
+F.col("address").drop_fields("street", "unit")       # drop struct fields
 ```
 
 ## The function library
 
-All functions return a `Column`. Following PySpark, a **String** argument is a
-**column name** for most functions (`F.sum("salary")`), but a **literal value**
-for functions whose parameters are genuinely literal (regex patterns, date
-formats, JSON paths, ...), e.g. `F.regexp_extract(F.col("s"), "\\d+", 0)`.
+`SparkConnect::F` provides every function of PySpark 4.3's
+`pyspark.sql.functions` except the UDF family (`udf`, `udtf`, `arrow_udtf`), and
+builds exactly the expression PySpark builds for the same arguments, so PySpark
+code ports verbatim. All functions return a `Column`.
+
+Arguments follow PySpark's typing: where PySpark takes a `ColumnOrName`, a
+**String** is a **column name** (`F.sum("salary")`, `F.regexp_like("s",
+"pattern_col")`) and you wrap literals with `F.lit` (`F.regexp_like("s",
+F.lit("a.*"))`); numbers and booleans are literals either way. Where PySpark
+takes a plain Python value (`str`, `int`, ...), the argument is always a
+**literal**, e.g. the pattern of `F.regexp_extract(F.col("s"), "\\d+", 0)` or the
+format of `F.date_format("ts", "yyyy-MM")`.
+
+`F.rand`, `F.randn`, `F.uuid`, `F.shuffle`, `F.randstr`, `F.uniform`, and
+`F.count_min_sketch` pick their seed on the client when none is given (like
+PySpark), so a DataFrame returns the same values on every action.
+
+{: .note }
+> On Spark 3.5 servers, `F.uuid`, `F.shuffle`, and `F.mode` need the Spark 4.0
+> argument forms these functions now always send (a seed, or the
+> `deterministic` flag); use `F.expr("uuid()")` and friends there.
 
 ```ruby
 # Aggregate
@@ -110,6 +136,28 @@ F.aggregate("nums", F.lit(0), ->(acc, x) { acc + x })
 
 # Hashing / misc
 F.hash("a", "b"); F.coalesce("a", "b"); F.monotonically_increasing_id
+
+# Null handling and safe arithmetic
+F.nvl("a", "b"); F.nullif("a", "b"); F.try_divide("a", "b"); F.try_add("a", "b")
+
+# CSV / XML / URLs / encryption
+F.from_csv("line", "a INT, b STRING", { "sep" => ";" }); F.from_xml("x", schema)
+F.parse_url("url", F.lit("HOST")); F.aes_encrypt("data", F.lit("0123456789abcdef"))
+
+# Semi-structured data (VARIANT; mutation functions need Spark 4.3+)
+F.parse_json("j"); F.variant_get("v", "$.a", "int"); F.variant_set("v", "$.b", F.lit(1))
+
+# Sketches (HLL, KLL, Theta, Tuple)
+F.hll_sketch_agg("x"); F.kll_sketch_agg_double("x"); F.theta_sketch_agg("x")
+
+# Vectors (Spark 4.3+)
+F.vector_cosine_similarity("a", "b"); F.vector_norm("v")
+
+# Time windows and TIME values
+F.window("ts", "10 minutes"); F.session_window("ts", "5 minutes"); F.time_trunc(F.lit("HOUR"), "t")
+
+# Calling functions by name
+F.call_function("my_catalog.my_db.my_fn", "a"); F.call_udf("registered_udf", "a")
 ```
 
 Analytic functions are combined with a window via {`Column#over`} - see

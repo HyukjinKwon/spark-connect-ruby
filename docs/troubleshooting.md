@@ -39,10 +39,22 @@ SPARK_CONNECT_RED_ARROW_VERSION=22.0.0 bundle install
 
 ## Version compatibility
 
-The client is generated against the Spark Connect 4.1 protocol and supports
+The client is generated against the Spark Connect 4.3 protocol and supports
 Apache Spark 3.5 and above. If you connect to an older
 server and a specific relation or function is rejected, that feature may not
-exist server-side; check your Spark version with `spark.version`.
+exist server-side; check your Spark version with `spark.version`. The newer
+APIs and the first Spark release whose server understands them:
+
+| Spark | APIs |
+| ----- | ---- |
+| 4.3   | `DataFrame#zip`, nanosecond timestamp types, the `F.vector_*`, `F.variant_*` mutation, `F.hmac`, `F.to_base32`/`F.from_base32`, and `F.timestamp_nanos` functions |
+| 4.2   | `nearest_by_join`, `read.changes`/`read_stream.changes`, `read_stream.name`, `trigger(real_time: ...)`, `with_schema_evolution`, the XML `read.xml(DataFrame)` form, the catalog DDL/maintenance methods (`drop_table`, `create_database`, `list_partitions`, `truncate_table`, ...), `get_operation_statuses`, Auto CDC flows, the `F.tuple_*`/`F.kll_merge_agg_*`/`F.time_*` functions |
+| 4.1   | `clone_session`, `repartition_by_id`, `isin(df)` IN subqueries, the TIME and spatial (geometry/geography) types, Declarative Pipelines |
+| 4.0   | subqueries (`scalar`/`exists`), `as_table`/`TableArg`, `lateral_join`, `transpose`, `tvf`, `merge_into`, `group_by(..., grouping_sets:)`, progress handlers, streaming query listeners |
+
+On Spark 3.5 servers, `F.uuid`, `F.shuffle`, and `F.mode` need the Spark 4.0
+argument forms these functions now send; use `F.expr("uuid()")` and friends
+there.
 
 ## createDataFrame type errors
 
