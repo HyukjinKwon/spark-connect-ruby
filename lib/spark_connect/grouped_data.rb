@@ -11,17 +11,24 @@ module SparkConnect
   class GroupedData
     Proto = SparkConnect::Proto
 
+    NUMERIC_TYPES = [
+      Types::ByteType, Types::ShortType, Types::IntegerType, Types::LongType,
+      Types::FloatType, Types::DoubleType, Types::DecimalType,
+    ].freeze
+
     # @param df [DataFrame]
     # @param grouping [Array<Column>] grouping columns.
     # @param group_type [Symbol] a `GROUP_TYPE_*` enum symbol.
     # @param pivot_col [Column, nil]
     # @param pivot_values [Array, nil]
-    def initialize(df, grouping, group_type, pivot_col: nil, pivot_values: nil)
+    # @param grouping_sets [Array<Array<Column>>, nil] for `GROUP_TYPE_GROUPING_SETS`.
+    def initialize(df, grouping, group_type, pivot_col: nil, pivot_values: nil, grouping_sets: nil)
       @df = df
       @grouping = grouping
       @group_type = group_type
       @pivot_col = pivot_col
       @pivot_values = pivot_values
+      @grouping_sets = grouping_sets
     end
 
     # Compute aggregate expressions.
@@ -33,6 +40,8 @@ module SparkConnect
     #     `{"age" => "max", "salary" => "avg"}`.
     # @return [DataFrame]
     def agg(*exprs)
+      raise IllegalArgumentError, "agg requires at least one expression" if exprs.empty?
+
       agg_exprs =
         if exprs.size == 1 && exprs.first.is_a?(Hash)
           exprs.first.map { |col, fn| Column.invoke(fn.to_s, Functions.col(col.to_s)).to_expr }
@@ -65,22 +74,34 @@ module SparkConnect
     # @return [DataFrame]
     def min(*cols) = numeric_agg("min", cols)
 
-    # Pivot a column into multiple output columns.
+    # Pivot a column into multiple output columns. Only valid right after
+    # {DataFrame#group_by}.
     #
     # @param pivot_col [String, Column]
     # @param values [Array, nil] optional explicit pivot values (faster, deterministic).
     # @return [GroupedData]
     def pivot(pivot_col, values = nil)
-      GroupedData.new(@df, @grouping, :GROUP_TYPE_PIVOT,
-                      pivot_col: Column.to_col(pivot_col.is_a?(String) ? Functions.col(pivot_col) : pivot_col),
-                      pivot_values: values)
+      unless @group_type == :GROUP_TYPE_GROUPBY
+        what = @group_type == :GROUP_TYPE_PIVOT ? "Repeated PIVOT operation" : "PIVOT after #{group_type_name}"
+        raise NotImplementedError, "#{what} is not supported"
+      end
+      raise IllegalArgumentError, "pivot values must be an Array, got #{values.class}" unless values.nil? || values.is_a?(Array)
+
+      col = pivot_col.is_a?(Column) ? pivot_col : @df.col(pivot_col.to_s)
+      GroupedData.new(@df, @grouping, :GROUP_TYPE_PIVOT, pivot_col: col, pivot_values: values)
     end
 
     private
 
+    def group_type_name
+      @group_type.to_s.delete_prefix("GROUP_TYPE_")
+    end
+
+    # Like PySpark, aggregate every numeric column when none is named.
     def numeric_agg(fn, cols)
-      exprs = cols.flatten.map { |c| Column.invoke(fn, Functions.col(c.to_s)).to_expr }
-      build(exprs)
+      names = cols.flatten.map(&:to_s)
+      names = @df.schema.fields.select { |f| NUMERIC_TYPES.any? { |t| f.data_type.is_a?(t) } }.map(&:name) if names.empty?
+      build(names.map { |c| Column.invoke(fn, Functions.col(c)).to_expr })
     end
 
     def build(agg_exprs)
@@ -94,6 +115,11 @@ module SparkConnect
         pivot = Proto::Aggregate::Pivot.new(col: @pivot_col.to_expr)
         pivot.values += @pivot_values.map { |v| Column.lit(v).to_expr.literal } if @pivot_values
         agg.pivot = pivot
+      end
+      if @group_type == :GROUP_TYPE_GROUPING_SETS
+        agg.grouping_sets += (@grouping_sets || []).map do |set|
+          Proto::Aggregate::GroupingSets.new(grouping_set: set.map(&:to_expr))
+        end
       end
       @df.build(aggregate: agg)
     end

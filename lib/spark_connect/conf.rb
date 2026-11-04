@@ -28,6 +28,20 @@ module SparkConnect
       nil
     end
 
+    # Set several configuration properties in one request.
+    #
+    # @param configs [Hash{String=>Object}]
+    # @param silent [Boolean] ignore failures (e.g. static configurations that
+    #   cannot be changed at runtime) on Spark 4.0+ servers.
+    # @return [void]
+    def set_all(configs, silent: false)
+      pairs = configs.map { |k, v| Proto::KeyValue.new(key: k.to_s, value: v.to_s) }
+      set = CR::Set.new(pairs: pairs)
+      set.silent = true if silent
+      @client.config(Op.new(set: set))
+      nil
+    end
+
     # Get the value of a configuration property.
     #
     # @param key [String]
@@ -75,5 +89,7 @@ module SparkConnect
       resp = @client.config(Op.new(is_modifiable: CR::IsModifiable.new(keys: [key.to_s])))
       resp.pairs.first&.value == "true"
     end
+    alias is_modifiable modifiable?
+    alias isModifiable modifiable?
   end
 end

@@ -40,17 +40,25 @@ module SparkConnect
       end
 
       # An unresolved attribute reference by (possibly dotted) name. The special
-      # name `"*"` expands to all columns.
+      # name `"*"` expands to all columns and `"t.*"` to all columns of `t`.
       #
       # @param name [String]
+      # @param plan_id [Integer, nil] resolve against the relation with this plan
+      #   id (set by {DataFrame#[]} so self-joins stay unambiguous).
+      # @param is_metadata_column [Boolean, nil] reference a metadata column.
       # @return [Column]
-      def from_name(name)
-        if name == "*"
-          new(Proto::Expression.new(unresolved_star: Proto::Expression::UnresolvedStar.new))
+      def from_name(name, plan_id: nil, is_metadata_column: nil)
+        name = name.to_s
+        if name == "*" || name.end_with?(".*")
+          star = Proto::Expression::UnresolvedStar.new
+          star.unparsed_target = name unless name == "*"
+          star.plan_id = plan_id if plan_id
+          new(Proto::Expression.new(unresolved_star: star))
         else
-          new(Proto::Expression.new(
-                unresolved_attribute: Proto::Expression::UnresolvedAttribute.new(unparsed_identifier: name.to_s)
-              ))
+          attr = Proto::Expression::UnresolvedAttribute.new(unparsed_identifier: name)
+          attr.plan_id = plan_id if plan_id
+          attr.is_metadata_column = is_metadata_column unless is_metadata_column.nil?
+          new(Proto::Expression.new(unresolved_attribute: attr))
         end
       end
 
@@ -107,7 +115,10 @@ module SparkConnect
         when Float
           l.new(double: value)
         when BigDecimal
-          l.new(decimal: l::Decimal.new(value: value.to_s("F")))
+          # Like PySpark, tag decimal literals as DecimalType(10, 0); the server
+          # widens that to fit the value (max of the declared and the value's own
+          # precision/scale), so nothing is rounded.
+          l.new(decimal: l::Decimal.new(value: decimal_string(value), precision: 10, scale: 0))
         when Rational
           l.new(double: value.to_f)
         when String
@@ -144,6 +155,31 @@ module SparkConnect
         end
       end
 
+      # Convert a protobuf `Expression.Literal` into the corresponding Ruby
+      # value (the inverse of {to_literal}; used for observed metrics).
+      #
+      # @param literal [Spark::Connect::Expression::Literal]
+      # @return [Object]
+      def literal_value(literal)
+        kind = literal.literal_type
+        case kind
+        when nil, :null then nil
+        when :decimal then BigDecimal(literal.decimal.value)
+        when :date then Date.new(1970, 1, 1) + literal.date
+        when :timestamp then Time.at(Rational(literal.timestamp, 1_000_000)).utc
+        when :timestamp_ntz then Time.at(Rational(literal.timestamp_ntz, 1_000_000)).utc
+        when :array then literal.array.elements.map { |e| literal_value(e) }
+        when :map then literal.map.keys.map { |k| literal_value(k) }.zip(literal.map.values.map { |v| literal_value(v) }).to_h
+        when :struct then literal.struct.elements.map { |e| literal_value(e) }
+        when :specialized_array
+          arr = literal.specialized_array
+          arr.public_send(arr.value_type).values.to_a
+        else
+          value = literal.public_send(kind)
+          value.is_a?(Google::Protobuf::MessageExts) ? value.to_h : value
+        end
+      end
+
       # Infer the Spark {Types::DataType} for a Ruby value (used when building
       # array/map literals). Mirrors PySpark's literal type inference.
       #
@@ -171,6 +207,13 @@ module SparkConnect
       end
 
       private
+
+      # Render a BigDecimal like Python's `str(Decimal)` for the common cases:
+      # integral values without a fractional part ("12"), others in plain
+      # notation ("1.5").
+      def decimal_string(value)
+        value.frac.zero? ? value.to_i.to_s : value.to_s("F")
+      end
 
       def infer_array_element_type(array)
         sample = array.find { |v| !v.nil? }
@@ -216,6 +259,13 @@ module SparkConnect
     def bitwise_and(other) = bin_op("&", other)
     def bitwise_or(other) = bin_op("|", other)
     def bitwise_xor(other) = bin_op("^", other)
+    alias bitwiseAND bitwise_and
+    alias bitwiseOR bitwise_or
+    alias bitwiseXOR bitwise_xor
+
+    # Null-safe equality alias matching PySpark's `eqNullSafe`.
+    # @return [Column]
+    def eqNullSafe(other) = eq_null_safe(other)
 
     # ---- Null / membership predicates -------------------------------------
     def is_null = Column.invoke("isNull", self)
@@ -223,10 +273,18 @@ module SparkConnect
     def is_nan = Column.invoke("isNaN", self)
     alias isNull is_null
     alias isNotNull is_not_null
+    alias isNaN is_nan
 
-    # True if the column's value is in `values`.
+    # True if the column's value is in `values`, or - given a single-column
+    # {DataFrame} - in the rows of that subquery (`IN (SELECT ...)`). A struct
+    # column (`F.struct("a", "b")`) compares several columns against a
+    # multi-column subquery.
+    #
+    # @param values [Array<Object>, DataFrame]
     # @return [Column]
     def isin(*values)
+      return in_subquery(values.first) if values.size == 1 && values.first.is_a?(DataFrame)
+
       values = values.first if values.size == 1 && values.first.is_a?(Array)
       Column.invoke("in", self, *Array(values))
     end
@@ -270,8 +328,41 @@ module SparkConnect
     # Extract a struct field by name.
     # @return [Column]
     def get_field(name)
-      get_item(name.to_s)
+      get_item(name.is_a?(Column) ? name : name.to_s)
     end
+    alias getItem get_item
+    alias getField get_field
+
+    # Add or replace the struct field `field_name` with `col`.
+    #
+    # @param field_name [String]
+    # @param col [Column]
+    # @return [Column]
+    def with_field(field_name, col)
+      raise IllegalArgumentError, "field_name must be a String, got #{field_name.class}" unless field_name.is_a?(String)
+      raise IllegalArgumentError, "col must be a Column, got #{col.class}" unless col.is_a?(Column)
+
+      Column.new(Proto::Expression.new(update_fields: Proto::Expression::UpdateFields.new(
+        struct_expression: @expr, field_name: field_name, value_expression: col.to_expr
+      )))
+    end
+    alias withField with_field
+
+    # Drop one or more (possibly nested, dotted) fields from a struct column.
+    #
+    # @param field_names [Array<String>]
+    # @return [Column]
+    def drop_fields(*field_names)
+      raise IllegalArgumentError, "drop_fields requires at least one field name" if field_names.empty?
+
+      expr = field_names.reduce(@expr) do |acc, name|
+        raise IllegalArgumentError, "field name must be a String, got #{name.class}" unless name.is_a?(String)
+
+        Proto::Expression.new(update_fields: Proto::Expression::UpdateFields.new(struct_expression: acc, field_name: name))
+      end
+      Column.new(expr)
+    end
+    alias dropFields drop_fields
 
     # ---- Aliasing / naming -------------------------------------------------
     # Assign one or more output names. With multiple names the expression must
@@ -305,6 +396,38 @@ module SparkConnect
     end
     alias as_type cast
     alias astype cast
+
+    # Like {#cast}, but returns null instead of failing when the value cannot
+    # be cast (TRY mode).
+    #
+    # @param data_type [Types::DataType, String]
+    # @return [Column]
+    def try_cast(data_type)
+      c = cast(data_type).to_expr.cast
+      c.eval_mode = :EVAL_MODE_TRY
+      Column.new(Proto::Expression.new(cast: c))
+    end
+
+    # Mark this column as a reference to the outer query inside a subquery
+    # (e.g. a correlated {DataFrame#scalar}). Over Spark Connect the server
+    # resolves outer references itself, so this returns an equivalent column,
+    # like PySpark.
+    # @return [Column]
+    def outer
+      Column.new(@expr)
+    end
+
+    # Apply a function (a block or callable) to this column and return its
+    # result, enabling fluent custom transformations.
+    #
+    # @yieldparam col [Column] self
+    # @return [Column]
+    def transform(fn = nil, &block)
+      fn ||= block
+      raise IllegalArgumentError, "transform requires a block or callable" unless fn
+
+      fn.call(self)
+    end
 
     # ---- Sort ordering -----------------------------------------------------
     def asc = sort_order(:SORT_DIRECTION_ASCENDING, :SORT_NULLS_FIRST)
@@ -363,6 +486,16 @@ module SparkConnect
     alias inspect to_s
 
     private
+
+    def in_subquery(df)
+      values =
+        if @expr.expr_type == :unresolved_function && @expr.unresolved_function.function_name == "struct"
+          @expr.unresolved_function.arguments.to_a
+        else
+          [@expr]
+        end
+      df.subquery_expression(:SUBQUERY_TYPE_IN, in_subquery_values: values)
+    end
 
     def bin_op(name, other)
       Column.invoke(name, self, Column.to_col(other))

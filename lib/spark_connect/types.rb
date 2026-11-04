@@ -149,6 +149,104 @@ module SparkConnect
       def to_proto = Types.wrap(timestamp_ntz: Proto::DataType::TimestampNTZ.new)
     end
 
+    # Shared behaviour of the nanosecond-capable timestamp types (Spark 4.3+,
+    # a preview behind `spark.sql.timestampNanosTypes.enabled`).
+    class TimestampNanosBase < DataType
+      MIN_PRECISION = 7
+      MAX_PRECISION = 9
+
+      # @return [Integer] fractional-second digits, 7..9 (9 = nanoseconds).
+      attr_reader :precision
+
+      def initialize(precision = MAX_PRECISION)
+        super()
+        unless precision.is_a?(Integer) && precision.between?(MIN_PRECISION, MAX_PRECISION)
+          raise IllegalArgumentError, "#{self.class.name.split('::').last} precision must be 7, 8, or 9, got #{precision.inspect}"
+        end
+
+        @precision = precision
+      end
+
+      def simple_string = "#{type_name}(#{precision})"
+      def json_value = simple_string
+      def ==(other) = other.instance_of?(self.class) && other.precision == precision
+      def hash = [self.class, precision].hash
+    end
+
+    # TIMESTAMP_NTZ(p): a zone-less local date-time with nanosecond-capable precision.
+    class TimestampNTZNanosType < TimestampNanosBase
+      def type_name = "timestamp_ntz"
+      def to_proto = Types.wrap(timestamp_ntz_nanos: Proto::DataType::TimestampNTZNanos.new(precision: precision))
+    end
+
+    # TIMESTAMP_LTZ(p): an instant with nanosecond-capable precision.
+    class TimestampLTZNanosType < TimestampNanosBase
+      def type_name = "timestamp_ltz"
+      def to_proto = Types.wrap(timestamp_ltz_nanos: Proto::DataType::TimestampLTZNanos.new(precision: precision))
+    end
+
+    # TIME(p): a time of day without a date or time zone (Spark 4.1+).
+    class TimeType < DataType
+      # @return [Integer] fractional-second digits, 0..6.
+      attr_reader :precision
+
+      def initialize(precision = 6)
+        super()
+        @precision = precision
+      end
+
+      def simple_string = "time(#{precision})"
+      def type_name = "time"
+      def json_value = simple_string
+      def to_proto = Types.wrap(time: Proto::DataType::Time.new(precision: precision))
+      def ==(other) = other.is_a?(TimeType) && other.precision == precision
+      def hash = [TimeType, precision].hash
+    end
+
+    # Shared behaviour of the spatial types (Spark 4.1+). An SRID of
+    # {MIXED_SRID} (`"ANY"`) allows values of any reference system.
+    class SpatialBase < DataType
+      MIXED_SRID = -1
+
+      # @return [Integer]
+      attr_reader :srid
+
+      def initialize(srid)
+        super()
+        @srid = srid.to_s.casecmp?("any") ? MIXED_SRID : Integer(srid)
+      end
+
+      def simple_string = srid == MIXED_SRID ? "#{type_name}(any)" : "#{type_name}(#{srid})"
+      def ==(other) = other.instance_of?(self.class) && other.srid == srid
+      def hash = [self.class, srid].hash
+
+      private
+
+      # The coordinate reference system id used by Spark's JSON schema form.
+      def crs
+        case srid
+        when MIXED_SRID then "SRID:ANY"
+        when 4326 then "OGC:CRS84"
+        when 0 then "SRID:0"
+        else "EPSG:#{srid}"
+        end
+      end
+    end
+
+    # GEOMETRY(srid): a planar (Cartesian) spatial value.
+    class GeometryType < SpatialBase
+      def type_name = "geometry"
+      def json_value = "geometry(#{crs})"
+      def to_proto = Types.wrap(geometry: Proto::DataType::Geometry.new(srid: srid))
+    end
+
+    # GEOGRAPHY(srid): a geodesic (spherical) spatial value.
+    class GeographyType < SpatialBase
+      def type_name = "geography"
+      def json_value = "geography(#{crs}, SPHERICAL)"
+      def to_proto = Types.wrap(geography: Proto::DataType::Geography.new(srid: srid))
+    end
+
     class VariantType < DataType
       def type_name = "variant"
       def to_proto = Types.wrap(variant: Proto::DataType::Variant.new)
@@ -252,6 +350,33 @@ module SparkConnect
       def simple_string = "interval"
       def type_name = "calendar_interval"
       def to_proto = Types.wrap(calendar_interval: Proto::DataType::CalendarInterval.new)
+    end
+
+    # A user-defined type, described by its class name(s) and the SQL type it
+    # is stored as. Values decode as their `sql_type`.
+    class UserDefinedType < DataType
+      attr_reader :jvm_class, :python_class, :sql_type
+
+      def initialize(sql_type, jvm_class: nil, python_class: nil)
+        super()
+        @sql_type = sql_type
+        @jvm_class = jvm_class
+        @python_class = python_class
+      end
+
+      def simple_string = sql_type ? sql_type.simple_string : "udt"
+      def type_name = "udt"
+
+      def to_proto
+        udt = Proto::DataType::UDT.new(type: "udt")
+        udt.jvm_class = jvm_class if jvm_class
+        udt.python_class = python_class if python_class
+        udt.sql_type = sql_type.to_proto if sql_type
+        Types.wrap(udt: udt)
+      end
+
+      def ==(other) = other.is_a?(UserDefinedType) && other.sql_type == sql_type && other.jvm_class == jvm_class
+      def hash = [UserDefinedType, sql_type, jvm_class].hash
     end
 
     # An array type. `element_type` is the type of every element; `contains_null`
@@ -440,6 +565,11 @@ module SparkConnect
     def date = DateType.new
     def timestamp = TimestampType.new
     def timestamp_ntz = TimestampNTZType.new
+    def timestamp_ntz_nanos(precision = 9) = TimestampNTZNanosType.new(precision)
+    def timestamp_ltz_nanos(precision = 9) = TimestampLTZNanosType.new(precision)
+    def time(precision = 6) = TimeType.new(precision)
+    def geometry(srid = 4326) = GeometryType.new(srid)
+    def geography(srid = 4326) = GeographyType.new(srid)
     def variant = VariantType.new
     def decimal(precision = 10, scale = 0) = DecimalType.new(precision, scale)
     def array(element_type, contains_null: true) = ArrayType.new(element_type, contains_null: contains_null)
@@ -468,6 +598,15 @@ module SparkConnect
       when :date then DateType.new
       when :timestamp then TimestampType.new
       when :timestamp_ntz then TimestampNTZType.new
+      when :timestamp_ntz_nanos then TimestampNTZNanosType.new(sub.has_precision? ? sub.precision : 9)
+      when :timestamp_ltz_nanos then TimestampLTZNanosType.new(sub.has_precision? ? sub.precision : 9)
+      when :time then TimeType.new(sub.has_precision? ? sub.precision : 6)
+      when :geometry then GeometryType.new(sub.srid)
+      when :geography then GeographyType.new(sub.srid)
+      when :udt
+        UserDefinedType.new(sub.has_sql_type? ? from_proto(sub.sql_type) : nil,
+                            jvm_class: sub.has_jvm_class? ? sub.jvm_class : nil,
+                            python_class: sub.has_python_class? ? sub.python_class : nil)
       when :variant then VariantType.new
       when :calendar_interval then CalendarIntervalType.new
       when :day_time_interval then DayTimeIntervalType.new(sub.start_field || 0, sub.end_field || 3)

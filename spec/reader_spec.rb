@@ -24,13 +24,18 @@ RSpec.describe SparkConnect::DataFrameReader do
       expect(ds.options["sep"]).to eq(";")
     end
 
-    it "carries a schema as a DDL/simple string from a StructType" do
+    it "carries a StructType schema as its JSON form, like PySpark" do
       schema = SparkConnect::Types.struct(
         SparkConnect::Types.field("id", SparkConnect::Types.long)
       )
       df = reader.format("csv").schema(schema).load("a.csv")
       ds = read_rel(df).data_source
-      expect(ds.schema).to eq(schema.simple_string)
+      expect(JSON.parse(ds.schema)).to eq(JSON.parse(schema.json))
+    end
+
+    it "carries a DDL schema string as given" do
+      ds = read_rel(reader.schema("id BIGINT").load("a.csv")).data_source
+      expect(ds.schema).to eq("id BIGINT")
     end
 
     it "carries a DDL string schema as-is" do

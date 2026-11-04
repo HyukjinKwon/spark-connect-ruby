@@ -28,9 +28,10 @@ RSpec.describe SparkConnect::SparkConnectClient do
 
   describe "construction" do
     it "derives session_id, client_type and user_context from the channel builder" do
-      cb = SparkConnect::ChannelBuilder.new("sc://localhost:15002/;user_id=u1;session_id=sess-9")
+      sid = "99999999-2222-3333-4444-555555555555"
+      cb = SparkConnect::ChannelBuilder.new("sc://localhost:15002/;user_id=u1;session_id=#{sid}")
       client = described_class.new(cb)
-      expect(client.session_id).to eq("sess-9")
+      expect(client.session_id).to eq(sid)
       expect(client.client_type).to eq("spark-connect-ruby/#{SparkConnect::VERSION}")
       expect(client.channel_builder).to equal(cb)
     end

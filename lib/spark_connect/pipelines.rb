@@ -70,6 +70,79 @@ module SparkConnect
                                             table_properties: table_properties, schema: schema)
     end
 
+    # Define a streaming table that flows (e.g. {#create_auto_cdc_flow} or
+    # {#define_flow}) can target, without a defining query. Mirrors PySpark's
+    # `create_streaming_table`.
+    # @return [String] the resolved output identifier.
+    def create_streaming_table(name, comment: nil, format: nil, partition_cols: [], clustering_columns: [],
+                               table_properties: {}, schema: nil)
+      define_table_output(name, :table, nil, comment: comment, format: format, partition_cols: partition_cols,
+                                             clustering_columns: clustering_columns, table_properties: table_properties,
+                                             schema: schema)
+    end
+
+    # Define an Auto CDC flow that applies the Change Data Capture events of
+    # `source` to the streaming table `target` (Spark 4.2+). Mirrors PySpark's
+    # `create_auto_cdc_flow`.
+    #
+    # @example
+    #   pipe.create_streaming_table("customers")
+    #   pipe.create_auto_cdc_flow(target: "customers", source: "customers_cdc", keys: ["id"],
+    #                             sequence_by: "ts", apply_as_deletes: "op = 'DELETE'", stored_as_scd_type: 2)
+    #
+    # @param target [String] the target streaming table.
+    # @param source [String] the CDC source to stream from.
+    # @param keys [Array<String, Column>] the columns identifying a row (unqualified).
+    # @param sequence_by [String, Column] the ordering expression (a SQL String or Column).
+    # @param apply_as_deletes [String, Column, nil] the condition marking a delete event.
+    # @param column_list [Array<String, Column>, nil] columns to keep in the target.
+    # @param except_column_list [Array<String, Column>, nil] columns to drop from the target.
+    # @param stored_as_scd_type [Integer, String, nil] 1 or 2 (server default when nil).
+    # @param name [String, nil] the flow name (defaults to `target`).
+    # @param track_history_column_list [Array<String, Column>, nil] SCD2 only: columns whose change opens a new history record.
+    # @param track_history_except_column_list [Array<String, Column>, nil] SCD2 only: columns excluded from history tracking.
+    # @param sql_conf [Hash{String=>String}] SQL configs applied to this flow.
+    # @return [String] the resolved flow name.
+    def create_auto_cdc_flow(target:, source:, keys:, sequence_by:, apply_as_deletes: nil, column_list: nil,
+                             except_column_list: nil, stored_as_scd_type: nil, name: nil,
+                             track_history_column_list: nil, track_history_except_column_list: nil, sql_conf: {})
+      %i[target source].zip([target, source]).each do |arg, value|
+        raise IllegalArgumentError, "#{arg} must be a String, got #{value.class}" unless value.is_a?(String)
+      end
+      raise IllegalArgumentError, "name must be a String, got #{name.class}" unless name.nil? || name.is_a?(String)
+
+      key_cols = cdc_columns("keys", keys)
+      columns = cdc_columns("column_list", column_list)
+      except = cdc_columns("except_column_list", except_column_list)
+      track = cdc_columns("track_history_column_list", track_history_column_list)
+      track_except = cdc_columns("track_history_except_column_list", track_history_except_column_list)
+      reject_together("column_list", columns, "except_column_list", except)
+      reject_together("track_history_column_list", track, "track_history_except_column_list", track_except)
+      unless stored_as_scd_type.nil? || %w[1 2].include?(stored_as_scd_type.to_s)
+        raise IllegalArgumentError, "stored_as_scd_type must be 1 or 2, got #{stored_as_scd_type.inspect}"
+      end
+      if stored_as_scd_type.to_s != "2" && (track&.any? || track_except&.any?)
+        raise IllegalArgumentError,
+              "track_history_column_list/track_history_except_column_list require stored_as_scd_type 2"
+      end
+
+      details = PC::DefineFlow::AutoCdcFlowDetails.new(
+        source: source, keys: key_cols.map(&:to_expr), sequence_by: cdc_expression("sequence_by", sequence_by).to_expr,
+        column_list: (columns || []).map(&:to_expr), except_column_list: (except || []).map(&:to_expr),
+        track_history_column_list: (track || []).map(&:to_expr),
+        track_history_except_column_list: (track_except || []).map(&:to_expr)
+      )
+      details.apply_as_deletes = cdc_expression("apply_as_deletes", apply_as_deletes).to_expr unless apply_as_deletes.nil?
+      details.stored_as_scd_type = :"SCD_TYPE_#{stored_as_scd_type}" unless stored_as_scd_type.nil?
+      flow_name = (name || target).to_s
+      flow = PC::DefineFlow.new(
+        dataflow_graph_id: @graph_id, flow_name: flow_name, target_dataset_name: target,
+        sql_conf: stringify(sql_conf), auto_cdc_flow_details: details
+      )
+      result = dispatch(PC.new(define_flow: flow))
+      identifier_string(result.pipeline_command_result&.define_flow_result&.resolved_identifier) || flow_name
+    end
+
     # Define a materialized view and the flow that populates it.
     # @return [String]
     def create_materialized_view(name, df = nil, comment: nil, format: nil, partition_cols: [],
@@ -193,6 +266,34 @@ module SparkConnect
       output.sink_details = sink_details if sink_details
       result = dispatch(PC.new(define_output: output))
       identifier_string(result.pipeline_command_result&.define_output_result&.resolved_identifier) || name.to_s
+    end
+
+    def cdc_columns(arg, cols)
+      return nil if cols.nil?
+      raise IllegalArgumentError, "#{arg} must be an Array of Strings or Columns, got #{cols.class}" unless cols.is_a?(Array)
+
+      cols.map do |c|
+        case c
+        when Column then c
+        when String then Functions.col(c)
+        else raise IllegalArgumentError, "#{arg} must contain only Strings or Columns, got #{c.class}"
+        end
+      end
+    end
+
+    def cdc_expression(arg, value)
+      case value
+      when Column then value
+      when String then Functions.expr(value)
+      else raise IllegalArgumentError, "#{arg} must be a SQL String or Column, got #{value.class}"
+      end
+    end
+
+    # An empty list is the same as an omitted one, so only non-empty lists clash.
+    def reject_together(include_arg, include_cols, except_arg, except_cols)
+      return unless include_cols&.any? && except_cols&.any?
+
+      raise IllegalArgumentError, "#{include_arg} and #{except_arg} cannot be set together"
     end
 
     def apply_schema(details, schema)

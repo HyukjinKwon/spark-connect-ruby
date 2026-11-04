@@ -25,8 +25,18 @@ module SparkConnect
     def initialize(client)
       @client = client
       @plan_id = -1
+      @plan_id_lock = Mutex.new
       @conf = RuntimeConfig.new(client)
+      @subquery_relations = {}
+      @release_session_on_close = true
     end
+
+    # @api private - whether {#stop} releases the server-side session.
+    attr_accessor :release_session_on_close
+
+    @default_session = nil
+    @session_lock = Mutex.new
+    ACTIVE_SESSION_KEY = :spark_connect_active_session
 
     class << self
       # @return [Builder] a new session builder.
@@ -34,17 +44,78 @@ module SparkConnect
         Builder.new
       end
 
-      # The currently active session set by {#set_active} / {Builder#get_or_create}.
+      # The active session of the current thread, else the process-wide
+      # default session (the first session built by {Builder#get_or_create} /
+      # {Builder#create}); stopped sessions are skipped.
+      #
+      # Unlike PySpark's `SparkSession.active()`, this returns nil (instead of
+      # raising) when there is no session, which is the idiomatic Ruby shape for
+      # an optional lookup.
+      #
       # @return [SparkSession, nil]
-      attr_accessor :active
+      def active
+        get_active_session || default_session
+      end
 
-      # @api private
+      # Make `session` the active session of the current thread (and the
+      # process-wide default when none is set). `nil` clears the active session.
+      # @param session [SparkSession, nil]
+      def active=(session)
+        Thread.current[ACTIVE_SESSION_KEY] = session
+        @session_lock.synchronize { @default_session ||= session } if session
+      end
+
+      # @return [SparkSession, nil] the active session of the current thread, if not stopped.
+      def get_active_session
+        s = Thread.current[ACTIVE_SESSION_KEY]
+        s && !s.stopped? ? s : nil
+      end
+      alias getActiveSession get_active_session
+
+      # @return [SparkSession, nil] the process-wide default session, if not stopped.
+      def default_session
+        s = @session_lock.synchronize { @default_session }
+        s && !s.stopped? ? s : nil
+      end
+
+      # Clear the process-wide default session (it is not stopped). @return [void]
+      def clear_default_session
+        @session_lock.synchronize { @default_session = nil }
+        nil
+      end
+
+      # Clear the current thread's active session (it is not stopped). @return [void]
+      def clear_active_session
+        Thread.current[ACTIVE_SESSION_KEY] = nil
+      end
+
+      # @api private - forget `session` wherever it is the default/active one.
+      def forget(session)
+        @session_lock.synchronize { @default_session = nil if @default_session.equal?(session) }
+        Thread.current[ACTIVE_SESSION_KEY] = nil if Thread.current[ACTIVE_SESSION_KEY].equal?(session)
+      end
     end
 
     # Allocate the next unique plan id. Used by {PlanBuilder.relation}.
     # @return [Integer]
     def next_plan_id
-      @plan_id += 1
+      @plan_id_lock.synchronize { @plan_id += 1 }
+    end
+
+    # @api private - remember a DataFrame's relation so a subquery expression
+    #   that refers to it by plan id can be expanded into a `WithRelations`.
+    # @param relation [Spark::Connect::Relation]
+    # @return [Integer] the relation's plan id.
+    def register_subquery_relation(relation)
+      plan_id = relation.common.plan_id
+      @plan_id_lock.synchronize { @subquery_relations[plan_id] = relation }
+      plan_id
+    end
+
+    # @api private
+    # @return [Spark::Connect::Relation, nil]
+    def subquery_relation(plan_id)
+      @plan_id_lock.synchronize { @subquery_relations[plan_id] }
     end
 
     # @return [String] the client session id (UUID).
@@ -105,7 +176,13 @@ module SparkConnect
 
     # @return [StreamingQueryManager] the manager for this session's streaming queries.
     def streams
-      StreamingQueryManager.new(self)
+      @streams ||= StreamingQueryManager.new(self)
+    end
+
+    # @return [TableValuedFunction] built-in table-valued functions
+    #   (`spark.tvf.explode(...)`, `spark.tvf.range(...)`, ...).
+    def tvf
+      TableValuedFunction.new(self)
     end
 
     # Create a new Spark Declarative Pipeline (a dataflow graph) in this session.
@@ -134,6 +211,15 @@ module SparkConnect
     alias create_dataframe create_data_frame
     alias createDataFrame create_data_frame
 
+    # An empty {DataFrame} with the given schema.
+    #
+    # @param schema [Types::StructType, String] a schema or DDL string.
+    # @return [DataFrame]
+    def empty_data_frame(schema)
+      create_data_frame([], schema)
+    end
+    alias emptyDataFrame empty_data_frame
+
     # @return [RuntimeConfig] runtime configuration facade.
     attr_reader :conf
 
@@ -147,19 +233,60 @@ module SparkConnect
       @client.analyze(spark_version: Proto::AnalyzePlanRequest::SparkVersion.new).spark_version.version
     end
 
-    # Make this the active/default session.
+    # Make this the active (and, if unset, the default) session.
     # @return [self]
     def set_active
       SparkSession.active = self
       self
     end
 
-    # Start a brand-new session against the same endpoint (independent
-    # server-side session id, configuration, and temporary views).
+    # Start a brand-new session against the same endpoint: a fresh server-side
+    # session with no configuration, temporary views, or functions carried over
+    # (Spark Connect `newSession` semantics, like PySpark 4.3). Configurations
+    # set through the builder are not reapplied.
     # @return [SparkSession]
     def new_session
-      SparkSession.new(SparkConnectClient.new(@client.channel_builder))
+      session = SparkSession.new(@client.new_session_client)
+      session.release_session_on_close = true
+      session
     end
+    alias newSession new_session
+
+    # Clone this session on the server: the new session starts with a copy of
+    # this session's SQL configurations, temporary views, registered functions,
+    # and catalog state, and is isolated from it afterwards (Spark 4.1+).
+    #
+    # @param new_session_id [String, nil] a UUID for the clone (generated when omitted).
+    # @return [SparkSession]
+    def clone_session(new_session_id = nil)
+      session = SparkSession.new(@client.clone_session(new_session_id))
+      session.release_session_on_close = true
+      session
+    end
+    alias cloneSession clone_session
+
+    # Register a callable invoked with execution progress of every query run by
+    # this session. It is called with the keywords `stages:` (an Array of
+    # {StageInfo}), `inflight_tasks:`, `operation_id:`, and `done:`.
+    #
+    # @param handler [#call] a Proc/lambda or any object responding to `call`.
+    # @return [void]
+    def register_progress_handler(handler = nil, &block)
+      @client.register_progress_handler(handler || block)
+    end
+    alias registerProgressHandler register_progress_handler
+
+    # Remove a handler added with {#register_progress_handler}. @return [void]
+    def remove_progress_handler(handler)
+      @client.remove_progress_handler(handler)
+    end
+    alias removeProgressHandler remove_progress_handler
+
+    # Remove all progress handlers. @return [void]
+    def clear_progress_handlers
+      @client.clear_progress_handlers
+    end
+    alias clearProgressHandlers clear_progress_handlers
 
     # Interrupt all operations running in this session.
     # @return [Array<String>] the ids of the interrupted operations.
@@ -200,13 +327,23 @@ module SparkConnect
       @client.clear_tags
     end
 
-    # Release the server-side session and stop the client.
+    # Release the server-side session and stop the client. Idempotent.
     # @return [void]
     def stop
-      @client.release_session
-      SparkSession.active = nil if SparkSession.active.equal?(self)
+      return nil if stopped?
+
+      @streams&.close
+      @client.release_session if @release_session_on_close
+      @client.close
+      SparkSession.forget(self)
       nil
     end
+
+    # @return [Boolean] whether {#stop} has been called.
+    def stopped?
+      @client.respond_to?(:closed?) && @client.closed?
+    end
+    alias is_stopped stopped?
 
     # @api private
     def create_data_frame_from_relation(relation)
@@ -264,9 +401,14 @@ module SparkConnect
   # Fluent builder for {SparkSession}. Returned by {SparkSession.builder}.
   class SparkSession
     class Builder
+      # Options that only make sense when connecting and are never applied as
+      # session configurations.
+      CONNECT_ONLY_OPTIONS = %w[spark.remote spark.master].freeze
+
       def initialize
         @options = {}
         @remote = nil
+        @channel_builder = nil
       end
 
       # Set the connection string (`sc://...`).
@@ -276,42 +418,100 @@ module SparkConnect
         self
       end
 
+      # Use a custom {ChannelBuilder} (e.g. a subclass that customizes the gRPC
+      # channel) instead of a connection string.
+      # @param channel_builder [ChannelBuilder]
+      # @return [self]
+      def channel_builder(channel_builder)
+        @channel_builder = channel_builder
+        self
+      end
+      alias channelBuilder channel_builder
+
+      # Accepted for PySpark compatibility; the master is chosen by the Spark
+      # Connect server, so this is a no-op.
+      # @return [self]
+      def master(_master)
+        self
+      end
+
+      # Hive support is a server-side setting and cannot be enabled from a
+      # Spark Connect client (PySpark raises too).
+      # @raise [NotImplementedError]
+      def enable_hive_support
+        raise NotImplementedError, "enableHiveSupport is not supported over Spark Connect; configure the server instead"
+      end
+      alias enableHiveSupport enable_hive_support
+
       # Set the application name.
       # @return [self]
       def app_name(name)
         @options["spark.app.name"] = name
         self
       end
+      alias appName app_name
 
       # Set an arbitrary configuration option to apply after connecting.
+      # @overload config(key, value)
+      # @overload config(map)
+      #   @param map [Hash] several options at once.
       # @return [self]
-      def config(key, value)
-        @options[key.to_s] = value
+      def config(key, value = nil)
+        if key.is_a?(Hash)
+          key.each { |k, v| @options[k.to_s] = v }
+        else
+          @options[key.to_s] = value
+        end
         self
       end
 
-      # Build (or reuse the active) {SparkSession}.
-      # @return [SparkSession]
-      def get_or_create
-        existing = SparkSession.active
-        return existing if existing
-
-        session = create
-        SparkSession.active = session
-        session
+      # Reuse the active (or default) session, else build a new one. Builder
+      # options are applied to the returned session either way, like PySpark.
+      # With a block, yields the session and stops it afterwards (the Ruby
+      # counterpart of PySpark's `with ... as spark:`), returning the block's value.
+      #
+      # @yieldparam session [SparkSession]
+      # @return [SparkSession, Object]
+      def get_or_create(&block)
+        session = SparkSession.active
+        if session
+          apply_options(session)
+        else
+          session = create
+        end
+        block ? use(session, &block) : session
       end
       alias getOrCreate get_or_create
 
-      # Always build a new {SparkSession}.
-      # @return [SparkSession]
-      def create
-        url = @remote || ENV["SPARK_REMOTE"] || "sc://localhost:15002"
-        client = SparkConnectClient.new(ChannelBuilder.new(url))
-        session = SparkSession.new(client)
-        @options.each { |k, v| session.conf.set(k, v) }
-        session
+      # Always build a new {SparkSession} (which becomes the active session,
+      # and the default one when none is set). With a block, behaves like
+      # {#get_or_create} with a block.
+      #
+      # @yieldparam session [SparkSession]
+      # @return [SparkSession, Object]
+      def create(&block)
+        raise IllegalArgumentError, "Set either remote(...) or channel_builder(...), not both" if @remote && @channel_builder
+
+        channel = @channel_builder || ChannelBuilder.new(@remote || ENV["SPARK_REMOTE"] || "sc://localhost:15002")
+        session = SparkSession.new(SparkConnectClient.new(channel))
+        SparkSession.active = session
+        apply_options(session)
+        block ? use(session, &block) : session
       end
       alias build create
+
+      private
+
+      def apply_options(session)
+        opts = @options.except(*CONNECT_ONLY_OPTIONS)
+        session.conf.set_all(opts, silent: true) unless opts.empty?
+      end
+
+      def use(session)
+        yield session
+      ensure
+        session.stop
+      end
     end
   end
 end
