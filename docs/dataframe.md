@@ -219,7 +219,14 @@ left.join(right, on: ["id"])
 
 # Join on an explicit condition (both "id" columns survive):
 left.join(right, on: left["id"] == right["id"])
+
+# Several conditions are combined with AND:
+left.join(right, on: [left["id"] == right["id"], right["score"] > 5])
 ```
+
+`df["col"]` (and `df.col("col")`) returns a column bound to that DataFrame, so a
+condition such as `left["id"] == right["id"]` stays unambiguous even when both
+sides share a lineage (self-joins).
 
 The `how:` value accepts every Spark join type, with the usual spelling
 variants:
@@ -246,6 +253,35 @@ without a condition:
 
 ```ruby
 left.cross_join(right)   # every left row paired with every right row
+```
+
+### Lateral, nearest-by, and zip joins
+
+`lateral_join` (Spark 4.0+) joins each left row with a right DataFrame that may
+refer to the left row's columns through `Column#outer`; `how:` is `:inner`
+(default), `:left`, or `:cross`.
+
+```ruby
+left.lateral_join(spark.range(3).select((F.col("id") + F.col("id").outer).alias("sum")))
+```
+
+`nearest_by_join` (Spark 4.2+) returns, for each left row, up to `num_results`
+right rows ranked by an expression. `mode` is `"exact"` or `"approx"`,
+`direction` is `"distance"` (smallest first) or `"similarity"` (largest first),
+and `join_type:` is `"inner"` (default) or `"leftouter"`. Invalid arguments
+raise `AnalysisError` with the `NEAREST_BY_JOIN.*` error classes, like PySpark.
+
+```ruby
+queries.nearest_by_join(items, F.abs(F.col("q") - F.col("v")), 3, "exact", "distance")
+```
+
+`zip` (Spark 4.3+) puts the columns of two DataFrames side by side. Both must
+derive from the same source through projection-only operations (`select`,
+`with_column`, ...), so their rows stay aligned:
+
+```ruby
+base = spark.range(3)
+base.select("id").zip(base.select((F.col("id") * 2).alias("double")))
 ```
 
 ## Set operations
@@ -283,12 +319,15 @@ a.except_all(b)
 ## Sampling
 
 `sample` returns a random fraction of the rows. Set `with_replacement: true` to
-allow the same row more than once, and pass a `seed:` for reproducibility.
+allow the same row more than once, and pass a `seed:` for reproducibility. Like
+PySpark, the client picks a seed when none is given, so the same DataFrame
+returns the same sample on every action.
 
 ```ruby
 df.sample(0.1)                          # ~10% of rows
 df.sample(0.5, seed: 42)                # reproducible
 df.sample(0.2, with_replacement: true, seed: 7)
+train, test = df.random_split([0.8, 0.2], 42)
 ```
 
 ## Aliasing a DataFrame
@@ -313,6 +352,25 @@ big   = spark.range(1_000_000)
 big.join(small.hint("broadcast"), on: "id")
 big.join(F.broadcast(small), on: "id")    # equivalent
 ```
+
+## Subqueries
+
+A DataFrame can be used inside another query's expressions (Spark 4.0+):
+
+```ruby
+orders = spark.table("orders")
+# Scalar subquery: a single-row, single-column DataFrame used as a value.
+orders.filter(F.col("amount") > spark.table("orders").select(F.avg("amount")).scalar)
+# EXISTS / IN subqueries.
+customers.filter(orders.filter(F.col("cid") == F.col("id").outer).exists)
+customers.filter(F.col("id").isin(orders.select("cid")))
+```
+
+`as_table` turns a DataFrame into a table argument for table-valued functions,
+optionally partitioned and ordered (`df.as_table.partition_by("k").order_by("ts")`).
+`spark.tvf` exposes the built-in table-valued functions (`explode`, `inline`,
+`posexplode`, `json_tuple`, `stack`, `variant_explode`, `sql_keywords`,
+`collations`, ...).
 
 ## Unpivot (melt)
 
@@ -391,6 +449,8 @@ df.to_arrow             # Arrow::Table
 df.to_h_array           # Array<Hash>
 ```
 
+`tail(n)` returns the last `n` rows.
+
 ## Schema and metadata
 
 These read the schema (a lightweight analyze call, not a full execution).
@@ -436,7 +496,40 @@ spark.sql("SELECT count(*) FROM people").show
 df.to_json                       # => single `value` column of JSON strings
 df.select(df.col_regex("`a.*`")) # select columns whose name matches a regex
 df.transform { |d| d.filter(F.col("age") > 18).limit(10) }  # fluent custom step
+df.zip_with_index("row_id")      # append consecutive 0-based indices (Spark 4.2+)
+df.transpose("name")             # swap rows and columns (Spark 4.0+)
+df.with_metadata("id", { "comment" => "primary key" })
+df.select(df.metadata_column("_metadata"))  # file-source metadata columns
 ```
+
+## Caching
+
+```ruby
+df.cache                                        # MEMORY_AND_DISK_DESER
+df.persist(SparkConnect::StorageLevel::DISK_ONLY)
+df.storage_level                                # => StorageLevel(true, false, false, false, 1)
+df.cached?                                      # alias is_cached
+df.unpersist
+```
+
+## MERGE INTO
+
+`merge_into` (Spark 4.0+, on tables that support it, e.g. Delta or Iceberg)
+upserts this DataFrame into a target table:
+
+```ruby
+updates.merge_into("target", F.expr("target.id = source.id"))
+       .when_matched.update_all
+       .when_not_matched.insert_all
+       .when_not_matched_by_source.delete
+       .merge
+```
+
+## Statistics and missing data
+
+The `na`/`stat` helpers are also available directly on the DataFrame, like
+PySpark: `dropna`, `fillna`, `replace`, `approx_quantile`, `corr`, `cov`,
+`crosstab`, `freq_items`, and `sample_by`.
 
 ## Repartitioning and checkpointing
 
@@ -444,6 +537,7 @@ df.transform { |d| d.filter(F.col("age") > 18).limit(10) }  # fluent custom step
 df.repartition(8)                       # hash repartition
 df.repartition(8, "country")            # by columns
 df.repartition_by_range(8, "ts")        # range partition on sort order
+df.repartition_by_id(8, F.col("pid").cast("int"))  # row i goes to partition pid (Spark 4.1+)
 df.coalesce(1)                          # reduce partitions, no shuffle
 cached = df.checkpoint                  # materialise server-side, truncate lineage
 cached = df.local_checkpoint            # same, on executor-local storage

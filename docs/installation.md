@@ -52,7 +52,7 @@ A quick smoke test that the gem and its native Arrow dependency load:
 require "spark-connect"
 
 puts SparkConnect::VERSION         # => the gem version, e.g. "0.1.0"
-puts SparkConnect::SPARK_VERSION   # => the Spark Connect protocol line, e.g. "4.1.0"
+puts SparkConnect::SPARK_VERSION   # => the Spark Connect protocol line, e.g. "4.3.0"
 ```
 
 If `require "spark-connect"` raises a load error mentioning Arrow or GLib, the
@@ -71,7 +71,7 @@ server runs.
 
    ```bash
    mkdir -p ~/spark
-   curl -fsSL "https://archive.apache.org/dist/spark/spark-4.1.0/spark-4.1.0-bin-hadoop3.tgz" \
+   curl -fsSL "https://archive.apache.org/dist/spark/spark-4.3.0/spark-4.3.0-bin-hadoop3.tgz" \
      | tar xz -C ~/spark --strip-components=1
    ```
 

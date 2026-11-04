@@ -21,7 +21,7 @@ Spark Connect server.
 {: .note }
 > **Gem:** [`spark-connect`](https://rubygems.org/gems/spark-connect) &nbsp;|&nbsp;
 > **Source:** [HyukjinKwon/spark-connect-ruby](https://github.com/HyukjinKwon/spark-connect-ruby) &nbsp;|&nbsp;
-> **Targets** the Spark Connect 4.1 protocol; supports Apache Spark 3.5 and above.
+> **Targets** the Spark Connect 4.3 protocol; supports Apache Spark 3.5 and above.
 
 ## What is Spark Connect?
 
@@ -46,12 +46,14 @@ This gem is that client for Ruby.
 - **DataFrame API** modeled on PySpark: `select`, `filter`/`where`, `join`, `group_by`/`agg`, `order_by`, `union`, `distinct`, window functions, set operations, sampling, pivot, and more.
 - **Snake_case Ruby idiom** with **camelCase aliases** for high-traffic names (`groupBy`, `withColumn`, `orderBy`, `createDataFrame`, ...), so PySpark snippets translate almost verbatim.
 - **Spark SQL** via `spark.sql(...)`, including named and positional parameters.
-- **A rich function library** under `SparkConnect::Functions` (aliased `SparkConnect::F`).
+- **The complete PySpark function library** under `SparkConnect::Functions` (aliased `SparkConnect::F`), matching PySpark 4.3's expressions argument for argument.
+- **Subqueries, lateral/nearest-by/zip joins, MERGE INTO, and table-valued functions** (`spark.tvf`).
 - **Typed schemas** under `SparkConnect::Types::*`, with DDL strings and `print_schema`.
 - **Arrow-based decoding** of results into `Row` objects (or a columnar `Arrow::Table`).
-- **Catalog**, **reader/writer**, **NA & stat helpers**, **observations**, and **window specs**.
-- **Structured Streaming**: streaming sources/sinks, triggers, output modes, watermarks, and a query manager.
-- **Declarative Pipelines** (Spark 4.1+): dataflow graphs of tables, materialized views, and flows.
+- **Catalog** (including the Spark 4.2 DDL and maintenance operations), **reader/writer** (CDC `changes`, XML, schema evolution), **NA & stat helpers**, **observations**, and **window specs**.
+- **Structured Streaming**: streaming sources/sinks, triggers (including real-time mode), output modes, watermarks, a query manager, and client-side query listeners.
+- **Declarative Pipelines** (Spark 4.1+): dataflow graphs of tables, materialized views, flows, and Auto CDC flows.
+- **Session tooling**: cloned and fresh sessions, execution progress handlers, operation status (`GetStatus`), tags, and interrupts.
 
 ## Install
 

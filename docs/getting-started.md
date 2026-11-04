@@ -24,14 +24,21 @@ The host is required; the port defaults to **15002**. Parameters live after a
 
 | Parameter    | Meaning                                                              |
 |--------------|----------------------------------------------------------------------|
-| `token`      | Bearer token. Implies TLS and adds an `authorization` header.        |
+| `token`      | Bearer token. Implies TLS and adds an `authorization` header. Defaults to the `SPARK_CONNECT_AUTHENTICATE_TOKEN` environment variable. |
 | `user_id`    | The Spark user id.                                                   |
 | `user_agent` | Client user agent (default `spark-connect-ruby/<version>`).          |
 | `use_ssl`    | `true`/`false` -- force TLS on or off.                               |
-| `session_id` | Reuse a specific server-side session id (UUID).                     |
+| `session_id` | Reuse a specific server-side session id (must be a UUID).            |
+| `grpc_keepalive_enabled` | Send HTTP/2 keepalive PINGs (default `true`).            |
+| `grpc_keepalive_time_ms` | Idle time before a keepalive PING (default `60000`).     |
+| `grpc_keepalive_timeout_ms` | Time to wait for the PING ack (default `20000`).      |
+| `grpc_keepalive_without_calls` | PING even with no call in flight (default `true`). |
 
-Any parameter whose name starts with `x-` is forwarded verbatim as gRPC request
-metadata.
+The keepalive defaults match the Spark 4.3 clients and let the client notice a
+connection that died silently (for example behind a load balancer). Every other
+parameter is forwarded verbatim as gRPC request metadata, like the official
+clients do (for example `x-api-key=...`). The client accepts messages up to
+128 MiB, so large Arrow batches do not hit gRPC's 4 MiB default.
 
 Examples:
 
@@ -63,12 +70,38 @@ spark = SparkConnect::SparkSession.builder
 - `remote(url)` sets the connection string. If you omit it, the builder falls
   back to the `SPARK_REMOTE` environment variable, then to
   `sc://localhost:15002`.
+- `channel_builder(cb)` (alias `channelBuilder`) uses a prepared
+  `SparkConnect::ChannelBuilder` (or a subclass) instead of a connection
+  string; it cannot be combined with `remote`.
 - `app_name(name)` sets the application name.
-- `config(key, value)` sets a runtime configuration option applied after
-  connecting.
+- `config(key, value)` or `config(hash)` sets runtime configuration options
+  applied after connecting.
 - `get_or_create` (alias `getOrCreate`) returns the active session if one
-  exists, otherwise creates and activates a new one. Use `create` (alias
-  `build`) to always make a fresh session.
+  exists (applying the builder's options to it, like PySpark), otherwise
+  creates and activates a new one. Use `create` (alias `build`) to always make
+  a fresh session.
+- `master(...)` is accepted and ignored (the server picks the master), and
+  `enable_hive_support` raises `NotImplementedError`, as in PySpark's Connect
+  client.
+
+Pass a block to `get_or_create`/`create` to stop the session when the block
+returns (the counterpart of PySpark's `with SparkSession.builder...getOrCreate() as spark:`):
+
+```ruby
+total = SparkConnect::SparkSession.builder.remote("sc://localhost:15002").get_or_create do |spark|
+  spark.range(10).count
+end
+```
+
+The session that a builder creates becomes the current thread's active
+session, and the process-wide default when none is set:
+
+```ruby
+SparkConnect::SparkSession.active              # active (else default) session, or nil
+SparkConnect::SparkSession.get_active_session  # the current thread's session, or nil
+spark.stop                                     # releases the server-side session; idempotent
+spark.stopped?                                 #=> true
+```
 
 You can inspect the server and session:
 

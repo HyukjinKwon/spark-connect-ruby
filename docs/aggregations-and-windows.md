@@ -66,6 +66,14 @@ directly (it is shorthand for `group_by.agg`):
 employees.agg(F.sum("salary").alias("total"), F.avg("salary").alias("avg")).show
 ```
 
+Grouping columns may also be given as 1-based ordinals (`df.group_by(1)`), and
+`grouping_sets` (Spark 4.0+) aggregates over explicit grouping sets:
+
+```ruby
+df.grouping_sets([["dept", "year"], ["dept"], []], "dept", "year")
+  .agg(F.sum("revenue").alias("revenue"))
+```
+
 ## GroupedData
 
 `GroupedData` exposes the standard aggregates. Each method returns a new

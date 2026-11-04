@@ -40,11 +40,29 @@ spark.stop
 
 ## What it supports
 
-`spark-connect` implements the Spark Connect **DataFrame**, **SQL**,
-**Structured Streaming**, and **Declarative Pipelines** API -- everything
-**except** user-defined functions (UDFs) and the `foreach`/`foreachBatch`
-streaming sinks, whose Spark Connect protobuf definitions are not yet finalized.
-(The separate, experimental MLlib-over-Connect surface is also out of scope.)
+`spark-connect` implements the Spark Connect **DataFrame**, **Column** and
+**functions**, **SQL**, **Catalog**, **reader/writer**, **Structured
+Streaming** (including query listeners), and **Declarative Pipelines** API of
+PySpark 4.3: subqueries, lateral and nearest-by joins, `zip`, `merge_into`,
+table-valued functions, `as_table` table arguments, caching with storage
+levels, session cloning, progress handlers, operation status, the TIME,
+spatial, and nanosecond timestamp types, and every built-in SQL function in
+`pyspark.sql.functions`.
+
+**Out of scope** are the parts of PySpark that run client-side code on the
+server or depend on Python libraries, because Spark executes such code only in
+Python (or JVM) workers and has no Ruby worker:
+
+- user-defined functions and table functions (`udf`, `udtf`, `arrow_udtf`,
+  pandas and Arrow UDFs; these raise `NotImplementedError`);
+- the `foreach`/`foreachBatch` streaming sinks (raise `NotImplementedError`);
+- `applyInPandas`/`applyInArrow`, `transformWithState(InPandas)`, cogrouped
+  maps, `mapInPandas`/`mapInArrow`, and Python data sources;
+- pandas interop (`toPandas`, `pandas_api`, `plot`) -- use `to_arrow` for a
+  columnar `Arrow::Table`;
+- the UDF profiler (`spark.profile`) and artifact upload (`addArtifacts`,
+  `copyFromLocalToFs`), which exist to serve UDF code;
+- the separate, experimental MLlib-over-Connect surface.
 
 Results decode through Apache Arrow into ordered, name-addressable `Row`s.
 Method names are snake_case (idiomatic Ruby) with camelCase aliases for the
@@ -57,7 +75,7 @@ common PySpark names (`groupBy`, `withColumn`, `orderBy`, `createDataFrame`,
 - **Apache Arrow C++/GLib system libraries** (required by the `red-arrow` dependency):
   - macOS: `brew install apache-arrow apache-arrow-glib`
   - Ubuntu/Debian: install `libarrow-glib-dev` from the [Apache Arrow APT repository](https://arrow.apache.org/install/)
-- A reachable **Spark Connect server**. This client is generated against the Spark Connect 4.1 protocol and supports **Apache Spark 3.5 and above**.
+- A reachable **Spark Connect server**. This client is generated against the Spark Connect 4.3 protocol and supports **Apache Spark 3.5 and above**.
 
 See the [installation guide](https://hyukjinkwon.github.io/spark-connect-ruby/installation.html) for details.
 
@@ -78,9 +96,9 @@ gem "spark-connect"
 ## Running a local Spark Connect server
 
 ```bash
-# Download a Spark distribution (4.1.0 shown here; 3.5+ also works)
-curl -fsSL https://archive.apache.org/dist/spark/spark-4.1.0/spark-4.1.0-bin-hadoop3.tgz | tar xz
-cd spark-4.1.0-bin-hadoop3
+# Download a Spark distribution (4.3.0 shown here; 3.5+ also works)
+curl -fsSL https://archive.apache.org/dist/spark/spark-4.3.0/spark-4.3.0-bin-hadoop3.tgz | tar xz
+cd spark-4.3.0-bin-hadoop3
 
 # Start the Connect server (requires Java 17+).
 # Spark 4.0.0+ bundles the Connect server, so no extra packages are needed.
@@ -106,7 +124,7 @@ SparkConnect::SparkSession.builder
   .get_or_create
 ```
 
-Supported parameters: `token`, `user_id`, `user_agent`, `use_ssl`, `session_id`, and any `x-*` custom gRPC headers.
+Supported parameters: `token` (defaults to `$SPARK_CONNECT_AUTHENTICATE_TOKEN`), `user_id`, `user_agent`, `use_ssl`, `session_id`, and the gRPC keepalive settings `grpc_keepalive_enabled`, `grpc_keepalive_time_ms`, `grpc_keepalive_timeout_ms`, `grpc_keepalive_without_calls`. Any other parameter (e.g. `x-api-key=...`) is sent as a gRPC request header.
 
 ## A quick tour
 
@@ -149,7 +167,7 @@ Runnable [`examples/`](examples/) cover quickstart, transformations, aggregation
 
 ## Compatibility
 
-The client is generated against the **Spark Connect 4.1** protocol and supports **Apache Spark 3.5 and above** (the Spark Connect wire protocol is backward compatible across these releases).
+The client is generated against the **Spark Connect 4.3** protocol and supports **Apache Spark 3.5 and above** (the Spark Connect wire protocol is backward compatible across these releases). APIs added in newer Spark releases (for example `DataFrame#zip` in 4.3 or `nearest_by_join` in 4.2) need a server of at least that version; see [Troubleshooting](https://hyukjinkwon.github.io/spark-connect-ruby/troubleshooting.html#version-compatibility) for the list. CI runs the integration specs against Spark 4.3.0, 4.2.0, 4.1.0, 4.0.0, and 3.5.5.
 
 ## Development
 

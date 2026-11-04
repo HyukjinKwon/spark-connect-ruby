@@ -63,6 +63,30 @@ pipe.define_flow("backfill", batch_df, target: "target", once: true)
 pipe.define_flow("incremental", stream_df, target: "target")
 ```
 
+## Auto CDC flows
+
+An Auto CDC flow (Spark 4.2+) applies the change events of a CDC source to a
+streaming table, keeping either the latest row per key (SCD type 1) or its
+history (SCD type 2). Like PySpark's `create_auto_cdc_flow`:
+
+```ruby
+pipe.create_streaming_table("customers")
+pipe.create_auto_cdc_flow(
+  target: "customers",
+  source: "customers_cdc",
+  keys: ["customer_id"],
+  sequence_by: "event_ts",              # SQL string or Column
+  apply_as_deletes: "op = 'DELETE'",    # optional
+  except_column_list: ["op"],           # or column_list: [...]
+  stored_as_scd_type: 2,                # 1 or 2 (server default when omitted)
+  track_history_column_list: ["email"]  # SCD2 only
+)
+```
+
+`column_list`/`except_column_list` and the two `track_history_*` lists are
+mutually exclusive pairs, and the history lists require `stored_as_scd_type: 2`;
+the client rejects invalid combinations before contacting the server.
+
 ## SQL-defined graphs
 
 ```ruby
