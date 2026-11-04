@@ -132,7 +132,9 @@ RSpec.describe "Spark 4.x API parity (integration)", :integration, if: ENV.fetch
       session.sql("CREATE TABLE rb_parity_merge (id INT) USING parquet").collect
       writer = session.create_data_frame([{ "id" => 1 }]).alias("s")
                       .merge_into("rb_parity_merge", f.expr("rb_parity_merge.id = s.id")).when_not_matched.insert_all
-      expect { writer.merge }.to raise_error(SparkConnect::AnalysisError, /MERGE/)
+      # Spark 4.1+ reports an AnalysisError; Spark 4.0 sends an unclassified
+      # "MERGE INTO TABLE is not supported temporarily." error.
+      expect { writer.merge }.to raise_error(SparkConnect::SparkConnectError, /MERGE/)
     ensure
       session.sql("DROP TABLE IF EXISTS rb_parity_merge").collect
     end
