@@ -38,10 +38,10 @@ Spark version need a server of at least that version.
   `fillna`, `replace`, `approx_quantile`, `corr`, `cov`, `crosstab`,
   `freq_items`, `sample_by`), and PySpark camelCase aliases (`isEmpty`,
   `sameSemantics`, `semanticHash`, `inputFiles`, ...).
-- **Column**: `isin(df)` IN-subqueries, `try_cast`, `with_field`,
-  `drop_fields`, `outer`, `transform`, qualified stars (`F.col("t.*")`), and
-  the `bitwiseAND`/`bitwiseOR`/`bitwiseXOR`/`eqNullSafe`/`isNaN`/`getItem`/
-  `getField` aliases.
+- **Column**: `isin(df)` IN-subqueries (Spark 4.1+), `try_cast`,
+  `with_field`, `drop_fields`, `outer`, `transform`, qualified stars
+  (`F.col("t.*")`), and the `bitwiseAND`/`bitwiseOR`/`bitwiseXOR`/
+  `eqNullSafe`/`isNaN`/`getItem`/`getField` aliases.
 - **Session**: `empty_data_frame`, `clone_session` (4.1), `tvf`
   (table-valued functions), progress handlers
   (`register_progress_handler`/`remove_progress_handler`/

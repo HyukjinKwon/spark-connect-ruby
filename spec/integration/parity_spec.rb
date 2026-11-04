@@ -65,11 +65,10 @@ RSpec.describe "Spark 4.x API parity (integration)", :integration, if: ENV.fetch
   describe "Spark 4.0+" do
     before { requires("4.0") }
 
-    it "scalar, exists, and IN subqueries" do
+    it "scalar and exists subqueries" do
       df = session.range(5)
       expect(ids(df.filter(f.col("id") > session.range(10).select(f.max("id") - 7).scalar))).to eq([3, 4])
       expect(df.filter(session.range(1).exists).count).to eq(5)
-      expect(ids(df.filter(f.col("id").isin(session.range(2))))).to eq([0, 1])
     end
 
     it "lateral_join, transpose, grouping_sets, and tvf" do
@@ -152,6 +151,10 @@ RSpec.describe "Spark 4.x API parity (integration)", :integration, if: ENV.fetch
       clone&.stop
       fresh&.stop
       session.conf.unset("spark.sql.shuffle.partitions")
+    end
+
+    it "isin(df) IN subqueries" do
+      expect(ids(session.range(5).filter(f.col("id").isin(session.range(2))))).to eq([0, 1])
     end
 
     it "repartition_by_id routes rows to the given partition" do

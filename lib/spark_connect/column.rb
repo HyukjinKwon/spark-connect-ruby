@@ -278,7 +278,7 @@ module SparkConnect
     # True if the column's value is in `values`, or - given a single-column
     # {DataFrame} - in the rows of that subquery (`IN (SELECT ...)`). A struct
     # column (`F.struct("a", "b")`) compares several columns against a
-    # multi-column subquery.
+    # multi-column subquery. IN subqueries need a Spark 4.1+ server.
     #
     # @param values [Array<Object>, DataFrame]
     # @return [Column]

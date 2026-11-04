@@ -355,7 +355,8 @@ big.join(F.broadcast(small), on: "id")    # equivalent
 
 ## Subqueries
 
-A DataFrame can be used inside another query's expressions (Spark 4.0+):
+A DataFrame can be used inside another query's expressions (Spark 4.0+;
+`isin` IN subqueries need Spark 4.1+):
 
 ```ruby
 orders = spark.table("orders")

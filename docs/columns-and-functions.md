@@ -52,7 +52,7 @@ F.col("flag").eq_null_safe(nil)   # null-safe equality (<=>)
 | Bitwise    | `bitwise_and`, `bitwise_or`, `bitwise_xor` (`bitwiseAND`, ...) |
 
 `isin` also accepts a single-column DataFrame, building an `IN (subquery)`
-(Spark 4.0+): `F.col("id").isin(other.select("id"))`.
+(Spark 4.1+): `F.col("id").isin(other.select("id"))`.
 
 ## Aliasing, casting, and ordering
 
