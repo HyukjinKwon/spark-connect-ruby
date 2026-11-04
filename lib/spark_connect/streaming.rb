@@ -444,7 +444,8 @@ module SparkConnect
       nil
     end
 
-    # @api private - deliver a client-side event (e.g. QueryStartedEvent).
+    # Deliver a client-side event (e.g. QueryStartedEvent) to the listeners.
+    # @api private
     def post_event(event)
       @listener_bus.post(event)
     end
@@ -527,7 +528,8 @@ module SparkConnect
     }.freeze
 
     class << self
-      # @api private - build an event from its server-side JSON.
+      # Build an event from its server-side JSON.
+      # @api private
       def event_from_json(kind, json)
         j = JSON.parse(json)
         case kind
@@ -571,10 +573,13 @@ module SparkConnect
       @thread = nil
     end
 
+    # @return [Array<Object>] a snapshot of the registered listeners.
     def listeners
       @lock.synchronize { @listeners.dup }
     end
 
+    # Register `listener`; the first one starts the server-side listener.
+    # @return [void]
     def add(listener)
       @lock.synchronize do
         return if @listeners.include?(listener)
@@ -584,6 +589,8 @@ module SparkConnect
       end
     end
 
+    # Unregister `listener`; the last one stops the server-side listener.
+    # @return [void]
     def remove(listener)
       thread = nil
       @lock.synchronize do
@@ -600,10 +607,13 @@ module SparkConnect
       thread&.join(30)
     end
 
+    # Unregister every listener. @return [void]
     def close
       listeners.each { |l| remove(l) }
     end
 
+    # Deliver `event` to every listener (exceptions are reported as warnings).
+    # @return [void]
     def post(event)
       listeners.each do |listener|
         StreamingQueryListener.dispatch(listener, event)

@@ -73,6 +73,8 @@ module SparkConnect
       nil
     end
 
+    # Append a merge action of `kind` (matched, not matched, not matched by
+    # source) and return the writer.
     # @api private
     def add_action(kind, type, condition, assignments = nil)
       action = MA.new(action_type: type)

@@ -2177,11 +2177,13 @@ module SparkConnect
       Column.invoke(name, *cols.map { |c| _col(c) }, *tail.compact.map { |v| lit(v) })
     end
 
+    # Trailing lg_nom_entries/mode literals of the tuple sketch functions.
     # @api private
     def _tuple_defaults(lg_nom_entries, mode)
       [lit(lg_nom_entries.nil? ? 12 : lg_nom_entries), lit(mode.nil? ? "sum" : mode)]
     end
 
+    # Shared body of listagg/string_agg and their _distinct variants.
     # @api private
     def _agg_with_delimiter(name, col, delimiter, is_distinct: false)
       args = [_col(col)]
@@ -2231,18 +2233,21 @@ module SparkConnect
     # @api private
     def _trim(name, col, trim) = trim.nil? ? _invoke(name, col) : _invoke(name, trim, col)
 
+    # Shared body of aes_decrypt/try_aes_decrypt (trailing defaults omitted like PySpark).
     # @api private
     def _aes_decrypt(name, input, key, mode, padding, aad)
       Column.invoke(name, _col(input), _col(key), _col_or_default(mode, "GCM"), _col_or_default(padding, "DEFAULT"),
                     _col_or_default(aad, ""))
     end
 
+    # Shared body of make_interval/try_make_interval (PySpark defaults).
     # @api private
     def _make_interval(name, years, months, weeks, days, hours, mins, secs)
       parts = [years, months, weeks, days, hours, mins].map { |v| _col_or_default(v, 0) }
       Column.invoke(name, *parts, _col_or_default(secs, BigDecimal("0")))
     end
 
+    # Shared body of the make_timestamp family (parts or date/time form).
     # @api private
     def _make_timestamp(name, parts, date, time, timezone, allow_timezone:)
       if parts.empty?
@@ -2265,11 +2270,13 @@ module SparkConnect
       _invoke(name, *args)
     end
 
+    # Shared body of lag/lead (default value omitted when nil).
     # @api private
     def _offset_fn(name, col, offset, default)
       default.nil? ? Column.invoke(name, _col(col), lit(offset)) : Column.invoke(name, _col(col), lit(offset), lit(default))
     end
 
+    # Shared body of aggregate/reduce (merge and optional finish lambdas).
     # @api private
     def _fold(name, col, initial, merge, finish)
       args = [_col(col), _col(initial), _lambda(merge)]
@@ -2289,6 +2296,7 @@ module SparkConnect
       Column.invoke(name, *args)
     end
 
+    # Shared body of from_json/from_csv/from_xml (options as one map).
     # @api private
     def _from_text(name, col, schema_col, options) = _with_options(name, [_col(col), schema_col], options)
 
@@ -2303,6 +2311,7 @@ module SparkConnect
       end
     end
 
+    # Shared body of schema_of_json/schema_of_csv/schema_of_xml.
     # @api private
     def _schema_of(name, arg_name, sample, options)
       _check_str_or_col(arg_name, sample)

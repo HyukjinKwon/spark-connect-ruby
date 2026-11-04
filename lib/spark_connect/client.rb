@@ -452,6 +452,7 @@ module SparkConnect
         @inflight = 0
       end
 
+      # Record an `ExecutionProgress` update and notify the handlers.
       def update(progress)
         stages = progress.stages.map do |s|
           StageInfo.new(stage_id: s.stage_id, num_tasks: s.num_tasks, num_completed_tasks: s.num_completed_tasks,
@@ -464,6 +465,7 @@ module SparkConnect
         notify(false)
       end
 
+      # Notify the handlers that the execution finished.
       def finish
         notify(true)
       end

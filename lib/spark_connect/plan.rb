@@ -65,6 +65,8 @@ module SparkConnect
       )
     end
 
+    # Collect into `acc` the plan ids of the subquery expressions in `msg`,
+    # without descending into child relations.
     # @api private
     def collect_subquery_plan_ids(msg, acc)
       return acc if msg.is_a?(Proto::Relation)

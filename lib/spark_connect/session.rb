@@ -31,7 +31,8 @@ module SparkConnect
       @release_session_on_close = true
     end
 
-    # @api private - whether {#stop} releases the server-side session.
+    # Whether {#stop} releases the server-side session.
+    # @api private
     attr_accessor :release_session_on_close
 
     @default_session = nil
@@ -89,7 +90,8 @@ module SparkConnect
         Thread.current[ACTIVE_SESSION_KEY] = nil
       end
 
-      # @api private - forget `session` wherever it is the default/active one.
+      # Forget `session` wherever it is the default/active one.
+      # @api private
       def forget(session)
         @session_lock.synchronize { @default_session = nil if @default_session.equal?(session) }
         Thread.current[ACTIVE_SESSION_KEY] = nil if Thread.current[ACTIVE_SESSION_KEY].equal?(session)

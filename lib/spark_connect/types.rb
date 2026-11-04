@@ -565,10 +565,20 @@ module SparkConnect
     def date = DateType.new
     def timestamp = TimestampType.new
     def timestamp_ntz = TimestampNTZType.new
+    # @param precision [Integer] fractional-second digits, 7..9 (Spark 4.3 preview).
+    # @return [TimestampNTZNanosType]
     def timestamp_ntz_nanos(precision = 9) = TimestampNTZNanosType.new(precision)
+    # @param precision [Integer] fractional-second digits, 7..9 (Spark 4.3 preview).
+    # @return [TimestampLTZNanosType]
     def timestamp_ltz_nanos(precision = 9) = TimestampLTZNanosType.new(precision)
+    # @param precision [Integer] fractional-second digits, 0..6 (Spark 4.1+).
+    # @return [TimeType]
     def time(precision = 6) = TimeType.new(precision)
+    # @param srid [Integer, String] spatial reference id, or `"ANY"` (Spark 4.1+).
+    # @return [GeometryType]
     def geometry(srid = 4326) = GeometryType.new(srid)
+    # @param srid [Integer, String] spatial reference id, or `"ANY"` (Spark 4.1+).
+    # @return [GeographyType]
     def geography(srid = 4326) = GeographyType.new(srid)
     def variant = VariantType.new
     def decimal(precision = 10, scale = 0) = DecimalType.new(precision, scale)
