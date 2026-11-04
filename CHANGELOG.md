@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-11-04
+
 Feature parity with the PySpark 4.3.0 Spark Connect client. Items marked with a
 Spark version need a server of at least that version.
 
@@ -245,7 +247,8 @@ Initial release.
 - Vendored Spark Connect 4.1 protobuf/gRPC definitions and a regeneration script
   (`bin/generate-protos`).
 
-[Unreleased]: https://github.com/HyukjinKwon/spark-connect-ruby/compare/v0.3.0...HEAD
+[Unreleased]: https://github.com/HyukjinKwon/spark-connect-ruby/compare/v0.4.0...HEAD
+[0.4.0]: https://github.com/HyukjinKwon/spark-connect-ruby/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/HyukjinKwon/spark-connect-ruby/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/HyukjinKwon/spark-connect-ruby/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/HyukjinKwon/spark-connect-ruby/releases/tag/v0.1.0
