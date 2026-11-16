@@ -7,6 +7,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Spark ML over Spark Connect** (`SparkConnect::ML`), mirroring `pyspark.ml`.
+  Needs a Spark 4.0 server; the cache administration commands need 4.1.
+  - Params with Spark's defaults, typed setters and getters, `copy`,
+    `extract_param_map`, `explain_params`, and `ParamGridBuilder`.
+  - Base classes `Estimator`, `Transformer`, `Model`, `Evaluator`, `Pipeline`
+    and `PipelineModel`.
+  - Every operator the Spark 4.3 Connect server allows: 42 estimators, 61
+    transformers (models included) and 6 evaluators, under `ML::Classification`,
+    `ML::Regression`, `ML::Clustering`, `ML::Recommendation`, `ML::FPM`,
+    `ML::Feature`, `ML::FeatureTransformers` and `ML::Evaluation`.
+  - Model attributes, methods and training summaries through `MlCommand.Fetch`,
+    limited to the members the server allows.
+  - Save and load (with overwrite) for operators, models, pipelines and
+    validators through `MlCommand.Write`/`Read`.
+  - `CrossValidator`, `TrainValidationSplit` and their models, orchestrated on the
+    client as PySpark's Connect client does.
+  - `DenseVector`, `SparseVector`, `DenseMatrix` and `SparseMatrix`, decoded from
+    `VectorUDT`/`MatrixUDT` columns and accepted as params.
+  - `ML::Stat` (Correlation, ChiSquareTest, KolmogorovSmirnovTest, Summarizer)
+    and `ML::Functions` (`vector_to_array`, `array_to_vector`).
+  - Server ML cache lifetime: models release their server object when released
+    or collected, and `ML.clean_cache` / `ML.cache_info` on Spark 4.1+.
+
 ## [0.4.0] - 2026-11-04
 
 Feature parity with the PySpark 4.3.0 Spark Connect client. Items marked with a
