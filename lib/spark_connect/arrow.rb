@@ -23,7 +23,11 @@ module SparkConnect
       batches.each do |data|
         next if data.nil? || data.empty?
 
-        reader = ::Arrow::RecordBatchStreamReader.new(::Arrow::BufferInputStream.new(::Arrow::Buffer.new(data)))
+        # Keep the buffer and stream referenced until the reader is drained: the
+        # reader holds only C-side references to them.
+        buffer = ::Arrow::Buffer.new(data)
+        input = ::Arrow::BufferInputStream.new(buffer)
+        reader = ::Arrow::RecordBatchStreamReader.new(input)
         reader.each do |record_batch|
           field_names ||= record_batch.schema.fields.map(&:name)
           record_batch.raw_records.each do |values|

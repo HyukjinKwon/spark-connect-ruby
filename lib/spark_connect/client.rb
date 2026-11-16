@@ -64,7 +64,7 @@ module SparkConnect
     ExecuteResult = Struct.new(
       :arrow_batches, :schema, :metrics, :observed_metrics, :sql_command_result, :row_count,
       :write_stream_result, :streaming_query_result, :streaming_manager_result, :checkpoint_relation,
-      :pipeline_command_result, :pipeline_events, :operation_id
+      :pipeline_command_result, :pipeline_events, :operation_id, :ml_command_result
     )
 
     # @return [String] the client-side session id (UUID v4).
@@ -386,6 +386,8 @@ module SparkConnect
         result.pipeline_command_result = resp.pipeline_command_result
       when :pipeline_event_result
         result.pipeline_events << resp.pipeline_event_result.event
+      when :ml_command_result
+        result.ml_command_result = resp.ml_command_result
       end
     end
 
