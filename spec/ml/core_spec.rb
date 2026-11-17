@@ -195,6 +195,14 @@ RSpec.describe "Spark ML framework" do
   end
 
   describe "server version gating" do
+    it "refuses ML commands on Spark 3.5" do
+      client = MlSpecSupport::FakeMlClient.new(spark_version: "3.5.5")
+      session = ml_session(client)
+      expect { ml::Rpc.run(session, SparkConnect::Proto::MlCommand.new) }
+        .to raise_error(ml::UnsupportedServerError, /Spark ML over Spark Connect needs .* 4\.0\.0, but the server is 3\.5\.5/)
+      expect(client.ml_commands).to be_empty
+    end
+
     it "refuses cache admin commands on Spark 4.0" do
       client = MlSpecSupport::FakeMlClient.new(spark_version: "4.0.0")
       session = ml_session(client)

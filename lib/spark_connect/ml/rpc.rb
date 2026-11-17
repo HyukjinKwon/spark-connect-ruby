@@ -60,6 +60,9 @@ module SparkConnect
         warning_message: "4.1.0",
       }.freeze
 
+      # How {UnsupportedServerError} names a feature; the others go by their key.
+      FEATURE_NAMES = { basic: "Spark ML over Spark Connect" }.freeze
+
       PENDING = Queue.new
 
       @versions = ObjectSpace::WeakMap.new
@@ -89,8 +92,8 @@ module SparkConnect
         return if supports?(session, feature)
 
         raise UnsupportedServerError,
-              "#{feature} needs a Spark Connect server of at least #{FEATURES.fetch(feature)}, " \
-              "but the server is #{server_version(session)}"
+              "#{FEATURE_NAMES.fetch(feature, feature)} needs a Spark Connect server of at least " \
+              "#{FEATURES.fetch(feature)}, but the server is #{server_version(session)}"
       end
 
       # The `MlOperator` proto for an operator instance.
@@ -124,6 +127,9 @@ module SparkConnect
       # @param ml [Proto::MlCommand]
       # @return [Proto::MlCommandResult, nil]
       def run(session, ml)
+        # Spark 3.5 servers have no ML commands; fail clearly instead of with the
+        # server's error for an unknown command type.
+        require_feature!(session, :basic)
         flush_pending(session)
         command = Proto::Command.new(ml_command: ml)
         session.client.execute_command(command).ml_command_result

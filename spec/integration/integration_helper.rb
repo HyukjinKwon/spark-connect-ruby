@@ -18,12 +18,18 @@ module IntegrationHelpers
   # @param target [String] a dotted version such as "4.1" or "4.1.0"
   # @return [Boolean]
   def server_spark_version_at_least?(target)
-    current = live_session.version.split(/[.-]/).map(&:to_i)
-    wanted = target.split(".").map(&:to_i)
-    (current.first(wanted.size) <=> wanted) >= 0
+    IntegrationHelpers.spark_version_at_least?(target)
   end
 
   class << self
+    # {#server_spark_version_at_least?} for groups that don't include this
+    # module, such as the hooks in `RSpec.configure` below.
+    def spark_version_at_least?(target)
+      current = session.version.split(/[.-]/).map(&:to_i)
+      wanted = target.split(".").map(&:to_i)
+      (current.first(wanted.size) <=> wanted) >= 0
+    end
+
     def session
       @session ||= SparkConnect::SparkSession.builder.remote(ENV.fetch("SPARK_REMOTE")).create
     end
@@ -37,5 +43,16 @@ end
 
 RSpec.configure do |config|
   config.include IntegrationHelpers, :integration
+
+  # Spark ML over Spark Connect needs a Spark 4.0 server, so the ML specs are
+  # skipped on older ones. Skipping at the group level also skips the groups'
+  # `before(:all)` setup, which already trains models.
+  config.define_derived_metadata(file_path: %r{/spec/integration/ml_[^/]*_spec\.rb\z}) do |metadata|
+    metadata[:ml] = true
+  end
+  config.before(:context, :ml) do
+    skip "Spark ML over Spark Connect needs a Spark 4.0+ server" unless IntegrationHelpers.spark_version_at_least?("4.0")
+  end
+
   config.after(:suite) { IntegrationHelpers.stop }
 end
