@@ -18,7 +18,7 @@ module SparkConnect
         param :alpha, :double, default: 1.0, doc: "alpha for implicit preference (>= 0)"
         param :user_col, :string, default: "user", doc: "column name for user ids"
         param :item_col, :string, default: "item", doc: "column name for item ids"
-        param :seed, :long, default: 1_994_790_107, doc: "random seed"
+        param :seed, :long, default: SEED_DEFAULT, doc: "random seed"
         param :rating_col, :string, default: "rating", doc: "column name for ratings"
         param :nonnegative, :boolean, default: false, doc: "whether to use nonnegative constraint for least squares"
         param :checkpoint_interval, :int, default: 10,

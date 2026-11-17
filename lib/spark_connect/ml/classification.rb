@@ -31,7 +31,7 @@ module SparkConnect
         base.param :max_memory_in_mb, :int, default: 256, spark_name: "maxMemoryInMB", doc: "maximum memory in MB for stats aggregation"
         base.param :cache_node_ids, :boolean, default: false, doc: "whether to cache node ids for each instance"
         base.param :checkpoint_interval, :int, default: 10, doc: "checkpoint interval (>= 1), or -1 to disable checkpointing"
-        base.param :seed, :long, doc: "random seed; unset uses a class-derived default on the server"
+        base.param :seed, :long, default: SEED_DEFAULT, doc: "random seed; unset uses a class-derived default on the server"
         base.param :weight_col, :string, doc: "weight column name; unset means every instance has weight 1.0"
         base.param :leaf_col, :string, default: "", doc: "leaf indices column name; empty disables the column"
       end
@@ -326,7 +326,7 @@ module SparkConnect
         param :step_size, :double, default: 1.0, doc: "step size for each iteration (> 0)"
         param :tol, :double, default: 1e-6, doc: "convergence tolerance for iterative algorithms (>= 0)"
         param :solver, :string, default: "adamW", doc: "the optimization solver: adamW or gd"
-        param :seed, :long, doc: "random seed; unset uses a class-derived default on the server"
+        param :seed, :long, default: SEED_DEFAULT, doc: "random seed; unset uses a class-derived default on the server"
         param :weight_col, :string, doc: "weight column name; unset means every instance has weight 1.0"
       end
 
@@ -348,7 +348,7 @@ module SparkConnect
 
         param :max_iter, :int, default: 100, doc: "max number of iterations (>= 0)"
         param :tol, :double, default: 1e-6, doc: "convergence tolerance for iterative algorithms (>= 0)"
-        param :seed, :long, doc: "random seed; unset uses a class-derived default on the server"
+        param :seed, :long, default: SEED_DEFAULT, doc: "random seed; unset uses a class-derived default on the server"
         param :layers, :int_array, doc: "sizes of the layers from input to output, including input and output (> 1 entries)"
         param :block_size, :int, default: 128, doc: "block size for stacking input data in matrices"
         param :step_size, :double, default: 0.03, doc: "step size for each iteration (> 0)"

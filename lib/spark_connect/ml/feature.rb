@@ -395,7 +395,7 @@ module SparkConnect
         param :max_sentence_length, :int, default: 1000, doc: "maximum length of a sentence, longer ones are split"
         param :step_size, :double, default: 0.025, doc: "the learning rate"
         param :max_iter, :int, default: 1, doc: "maximum number of iterations"
-        param :seed, :long, doc: "the random seed"
+        param :seed, :long, default: SEED_DEFAULT, doc: "the random seed"
         param :input_col, :string, doc: "input column name (array of strings)"
         param :output_col, :string, doc: "output column name"
       end
@@ -411,7 +411,7 @@ module SparkConnect
         param :max_sentence_length, :int, default: 1000, doc: "maximum length of a sentence"
         param :step_size, :double, default: 0.025, doc: "the learning rate"
         param :max_iter, :int, default: 1, doc: "maximum number of iterations"
-        param :seed, :long, doc: "the random seed"
+        param :seed, :long, default: SEED_DEFAULT, doc: "the random seed"
         param :input_col, :string, doc: "input column name"
         param :output_col, :string, doc: "output column name"
 
@@ -522,7 +522,7 @@ module SparkConnect
 
         param :input_col, :string, doc: "input column name"
         param :output_col, :string, doc: "output column name"
-        param :seed, :long, doc: "the random seed"
+        param :seed, :long, default: SEED_DEFAULT, doc: "the random seed"
         param :num_hash_tables, :int, default: 1, spark_name: "numHashTables",
                                       doc: "number of hash tables (increasing it lowers the false negative rate)"
         param :bucket_length, :double, doc: "the length of each hash bucket (> 0)"
@@ -545,7 +545,7 @@ module SparkConnect
 
         param :input_col, :string, doc: "input column name"
         param :output_col, :string, doc: "output column name"
-        param :seed, :long, doc: "the random seed"
+        param :seed, :long, default: SEED_DEFAULT, doc: "the random seed"
         param :num_hash_tables, :int, default: 1, spark_name: "numHashTables",
                                       doc: "number of hash tables (increasing it lowers the false negative rate)"
       end

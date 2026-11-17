@@ -200,7 +200,7 @@ module SparkConnect
         param :step_size, :double, default: 1.0, doc: "step size for each iteration (> 0)"
         param :tol, :double, default: 1e-6, doc: "convergence tolerance for iterative algorithms (>= 0)"
         param :solver, :string, default: "adamW", doc: "the optimization solver: adamW or gd"
-        param :seed, :long, doc: "random seed; unset uses a class-derived default on the server"
+        param :seed, :long, default: SEED_DEFAULT, doc: "random seed; unset uses a class-derived default on the server"
         param :weight_col, :string, doc: "weight column name; unset means every instance has weight 1.0"
       end
 

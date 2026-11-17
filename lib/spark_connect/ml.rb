@@ -8,6 +8,7 @@ require_relative "ml/base"
 require_relative "ml/persistence"
 require_relative "ml/pipeline"
 require_relative "ml/tuning"
+require_relative "ml/one_vs_rest"
 require_relative "ml/stat"
 require_relative "ml/functions"
 require_relative "ml/classification"
@@ -35,6 +36,13 @@ module SparkConnect
     def self.session_or_active(session, fallback = nil)
       session || fallback || SparkSession.active ||
         raise(IllegalArgumentError, "no active SparkSession; pass session:")
+    end
+
+    # Every ML operator class (classes under SparkConnect::ML that extend Params).
+    # @api private
+    # @return [Array<Class>]
+    def self.operator_classes
+      ObjectSpace.each_object(Class).select { |c| c < Params && c.name&.start_with?("SparkConnect::ML::") }
     end
 
     # Evict every ML object of the session from the server cache (Spark 4.1+).

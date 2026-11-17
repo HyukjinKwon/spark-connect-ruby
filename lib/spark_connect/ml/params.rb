@@ -10,6 +10,14 @@ module SparkConnect
       o.freeze
     end
 
+    # Default of a `seed` param: Spark's `HasSeed` default, the Java hash code of
+    # the concrete class name (`this.getClass.getName.hashCode.toLong`). It is
+    # resolved per class by {Param#default_for}.
+    SEED_DEFAULT = Object.new.tap do |o|
+      def o.inspect = "SEED_DEFAULT"
+      o.freeze
+    end
+
     # A declared ML parameter. Params are declared on the operator classes with
     # {Params.param}; the same {Param} object is shared by every instance of the
     # class, and is what {Params#param} / ParamGridBuilder use as a key.
@@ -40,9 +48,19 @@ module SparkConnect
         !@default.equal?(NO_DEFAULT)
       end
 
-      # @return [Object, nil] the default value (nil when there is none).
+      # @return [Object, nil] the default for the owner class (nil when there is none).
       def default
-        default? ? @default : nil
+        default_for(owner)
+      end
+
+      # The default for an instance of `klass`: a `seed` default depends on the class.
+      # @param klass [Class]
+      # @return [Object, nil]
+      def default_for(klass)
+        return nil unless default?
+        return ML.java_string_hash(klass.operator || klass.name) if @default.equal?(SEED_DEFAULT)
+
+        @default
       end
 
       # @return [String]
@@ -247,7 +265,7 @@ module SparkConnect
       def get(name)
         declared = param(name)
         return @param_map[declared] if @param_map.key?(declared)
-        return declared.default if declared.default?
+        return declared.default_for(self.class) if declared.default?
 
         raise IllegalArgumentError, "Failed to find a default value for #{declared.name}"
       end
@@ -284,7 +302,7 @@ module SparkConnect
       def extract_param_map(extra = {})
         map = {}
         params.each do |declared|
-          map[declared] = declared.default if declared.default?
+          map[declared] = declared.default_for(self.class) if declared.default?
         end
         map.merge!(@param_map)
         extra.each { |k, v| map[param(k)] = ParamTypes.coerce(param(k), v) if self.class.params.key?(key_name(k)) }
@@ -338,6 +356,15 @@ module SparkConnect
 
       # @return [String]
       def inspect = "#<#{self.class.name} uid=#{uid}>"
+    end
+
+    # Java's `String#hashCode` of `str` (as a signed 32-bit integer).
+    # @param str [String]
+    # @return [Integer]
+    def self.java_string_hash(str)
+      hash = 0
+      str.encode("UTF-16BE").unpack("n*").each { |unit| hash = ((31 * hash) + unit) & 0xFFFFFFFF }
+      hash >= 0x80000000 ? hash - 0x100000000 : hash
     end
 
     # Converts a Ruby name to the camelCase name Spark uses (`max_iter` -> `maxIter`).

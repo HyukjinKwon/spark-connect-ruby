@@ -4,19 +4,25 @@ require "json"
 
 module SparkConnect
   module ML
-    # Save and load for estimators, transformers, evaluators, models and the
-    # meta-algorithms (pipelines, cross-validators, train-validation-splits).
+    # Save and load in Spark's standard ML persistence format (the one PySpark's
+    # Connect client and Spark Classic both read and write).
     #
-    # Operators and models go through `MlCommand.Write` / `MlCommand.Read`, so the
-    # server writes the files in Spark's own ML format. Meta-algorithms are
-    # orchestrated here, like PySpark's connect client: their own metadata is a
-    # one-line JSON document written with the DataFrame text writer, and each
-    # child (stage, estimator, evaluator, best model) is saved into a
-    # subdirectory with the same functions.
+    # - Operators and fitted models are written by the server (`MlCommand.Write`)
+    #   and read back with `MlCommand.Read`, so their directories are exactly what
+    #   Spark writes.
+    # - Pipelines, cross-validators, train-validation splits and one-vs-rest
+    #   models are orchestrated here, the way PySpark's connect client does it:
+    #   `metadata` is a one-line JSON document (class, timestamp, sparkVersion,
+    #   uid, paramMap, defaultParamMap, plus extra keys), written with the
+    #   DataFrame text writer, and children go into the subdirectories PySpark
+    #   uses (`stages/<index>_<uid>`, `estimator`, `evaluator`, `bestModel`,
+    #   `subModels/fold<i>/<j>`, `classifier`, `model_<i>`, `epm_<name><n>`).
     module Persistence
       module_function
 
-      # Write an estimator, transformer or evaluator (or a meta-algorithm).
+      # ---- operators and models: the server writes and reads them ------------
+
+      # Write an estimator or transformer (or a composite that writes itself).
       # @return [void]
       def save_operator(operator, path, overwrite:, session:)
         if operator.respond_to?(:save_meta, true)
@@ -34,7 +40,7 @@ module SparkConnect
         nil
       end
 
-      # Write a fitted model.
+      # Write a fitted model through the server's object reference.
       # @return [void]
       def save_model(model, path, overwrite:, session:)
         Rpc.run(session, Proto::MlCommand.new(write: Proto::MlCommand::Write.new(
@@ -72,13 +78,15 @@ module SparkConnect
         model
       end
 
-      # Load any saved ML instance whose class name is recorded in its metadata.
-      # @api private
+      # Load any saved ML instance, choosing the class from the `class` in its metadata.
       # @return [Params]
       def load_any(session, path)
-        meta = read_metadata(session, path)
-        klass = Object.const_get(meta.fetch("class"))
-        klass.load(path, session: session)
+        klass = class_for(read_metadata(session, path).fetch("class"))
+        if klass <= Model && !klass.respond_to?(:load_meta)
+          load_model(klass, path, session: session)
+        else
+          load_operator(klass, path, session: session)
+        end
       end
 
       # @api private
@@ -90,7 +98,8 @@ module SparkConnect
         Rpc.operator_info(result)
       end
 
-      # Set loaded param values (keyed by Spark name) on `instance`.
+      # Set loaded param values (keyed by Spark name) on `instance`. Names the
+      # class does not declare (such as `stageUids`) are ignored.
       # @api private
       def apply_params(instance, spark_values)
         spark_values.each do |spark_name, value|
@@ -99,98 +108,139 @@ module SparkConnect
         end
       end
 
-      # ---- meta-algorithms (pipelines, validators) ----------------------------
+      # ---- the metadata document ----------------------------------------------
 
-      # Save a meta-algorithm: its own params as JSON metadata, then each child
-      # (a stage, an estimator, an evaluator, a best model) into a subdirectory.
+      # Write the `metadata` document of `instance` under `path`, like
+      # `DefaultParamsWriter.saveMetadata`.
       #
+      # @param session [SparkSession]
+      # @param path [String]
       # @param instance [Params]
-      # @param children [Hash{String => Params}] relative directory => child, in order.
-      # @param extra [Hash] extra metadata (for example the estimator param maps).
+      # @param param_map [Hash{String => Object}] the `paramMap` section (Spark names).
+      # @param extra [Hash] keys added to the document (for example `avgMetrics`).
       # @return [void]
-      def save_composite(instance, path, overwrite:, session:, children:, extra: {})
-        Rpc.handle_overwrite(session, path, overwrite)
-        metadata = base_metadata(instance).merge(
-          "paramMap" => json_params(instance.explicit_param_map.reject { |_, value| object_value?(value) }),
-          "children" => children.map { |rel, child| { "path" => rel, "class" => child.class.name } }
-        ).merge(extra)
-        write_metadata(session, path, metadata, overwrite: false)
-        children.each do |rel, child|
-          child.save(File.join(path, rel), overwrite: false, session: session)
-        end
-        nil
+      def write_metadata(session, path, instance, param_map:, extra: {}, exclude: [])
+        document = {
+          "class" => scala_class_name(instance.class),
+          "timestamp" => (Time.now.to_f * 1000).round,
+          "sparkVersion" => Rpc.server_version(session).to_s,
+          "uid" => instance.uid,
+          "paramMap" => param_map.except(*exclude),
+          "defaultParamMap" => default_json(instance, exclude: exclude),
+        }.merge(extra)
+        write_text(session, File.join(path, "metadata"), JSON.generate(document))
       end
 
-      # Load the children saved by {save_composite}, in order.
-      # @return [Array(Hash, Hash{String => Params})] the metadata and the children.
-      def load_composite(path, session:)
-        meta = read_metadata(session, path)
-        children = meta.fetch("children").to_h do |child|
-          [child.fetch("path"), Object.const_get(child.fetch("class")).load(File.join(path, child.fetch("path")), session: session)]
-        end
-        [meta, children]
+      # @return [Hash] the parsed `metadata` document under `path`.
+      def read_metadata(session, path)
+        JSON.parse(read_text(session, File.join(path, "metadata")))
       end
 
-      # Child directories for pipeline stages: `stages/<index>_<uid>`.
-      # @return [Hash{String => Params}]
-      def stage_children(stages)
-        stages.each_with_index.to_h { |stage, i| [File.join("stages", format("%<i>d_%<u>s", i: i, u: stage.uid)), stage] }
-      end
-
+      # The class name written to metadata: the Spark (Scala) class name.
       # @api private
-      def base_metadata(instance)
-        { "class" => instance.class.name, "uid" => instance.uid, "timestamp" => (Time.now.to_f * 1000).to_i }
+      def scala_class_name(klass)
+        klass.operator || klass.name
       end
 
-      # Params holding operators (estimators, stages) are saved as children, not JSON.
+      # The `paramMap` section of an instance: every param value (defaults
+      # included, as `extractParamMap` does), except the names in `skip` and
+      # operator-valued params (those are written as children).
+      # @return [Hash{String => Object}]
+      def extract_json_params(instance, skip: [])
+        instance.extract_param_map.each_with_object({}) do |(declared, value), acc|
+          next if skip.include?(declared.spark_name) || object_value?(value)
+
+          acc[declared.spark_name] = json_value(value)
+        end
+      end
+
+      # The `defaultParamMap` section: the defaults of the instance's class.
+      # @api private
+      def default_json(instance, exclude: [])
+        instance.class.params.values.select(&:default?).each_with_object({}) do |declared, acc|
+          next if exclude.include?(declared.spark_name)
+
+          value = declared.default_for(instance.class)
+          acc[declared.spark_name] = json_value(value) unless object_value?(value)
+        end
+      end
+
+      # Params holding operators (estimators, stages) are children, not JSON.
       # @api private
       def object_value?(value)
         value.is_a?(Params) || (value.is_a?(Array) && value.any? { |v| v.is_a?(Params) || v.is_a?(Hash) })
-      end
-
-      # ---- one-line JSON metadata for meta-algorithms -------------------------
-
-      # Write `metadata` (a Hash) to `path/metadata`.
-      # @api private
-      def write_metadata(session, path, metadata, overwrite:)
-        json = JSON.generate(metadata)
-        df = session.create_data_frame([{ "value" => json }], Types.struct(Types.field("value", Types.string)))
-        writer = df.coalesce(1).write
-        writer = writer.mode(:overwrite) if overwrite
-        writer.text(File.join(path, "metadata"))
-        nil
-      end
-
-      # Read the JSON metadata written by {write_metadata}.
-      # @api private
-      # @return [Hash]
-      def read_metadata(session, path)
-        row = session.read.text(File.join(path, "metadata")).collect.first
-        JSON.parse(row["value"] || row.values.first)
-      end
-
-      # The JSON-friendly form of an explicit param map, keyed by Spark name.
-      # @api private
-      def json_params(params)
-        params.to_h do |declared, value|
-          [declared.spark_name, json_value(value)]
-        end
       end
 
       # @api private
       def json_value(value)
         case value
         when Linalg::Vector, Linalg::Matrix
-          raise IllegalArgumentError, "#{value.class.name.split('::').last} params cannot be saved in tuning metadata"
+          raise IllegalArgumentError, "#{value.class.name.split('::').last} values cannot be written to metadata"
         when Array then value.map { |v| json_value(v) }
         else value
         end
       end
 
-      # Stage directory name for child `index` with `uid`.
+      # The directory name of stage `index` of `count` with `uid`: the index is
+      # zero-padded to the width of `count`, as `PipelineSharedReadWrite.getStagePath`.
       # @api private
-      def child_path(path, index, uid)
-        File.join(path, "stages", format("%<i>d_%<uid>s", i: index, uid: uid))
+      def stage_dir_name(index, uid, count)
+        "#{index.to_s.rjust(count.to_s.length, '0')}_#{uid}"
+      end
+
+      # Overwrite handling for a write target (deletes `path` first when asked).
+      # @return [void]
+      def handle_overwrite(session, path, overwrite)
+        Rpc.handle_overwrite(session, path, overwrite)
+      end
+
+      # @api private
+      def write_text(session, path, text)
+        df = session.create_data_frame([{ "value" => text }], Types.struct(Types.field("value", Types.string)))
+        df.coalesce(1).write.text(path)
+        nil
+      end
+
+      # @api private
+      def read_text(session, path)
+        row = session.read.text(path).collect.first
+        row["value"] || row.values.first
+      end
+
+      # Save pipeline stages to `path/stages/<index>_<uid>`.
+      # @return [void]
+      def save_stages(path, stages, session:)
+        dir = File.join(path, "stages")
+        stages.each_with_index do |stage, i|
+          stage.save(File.join(dir, stage_dir_name(i, stage.uid, stages.size)), overwrite: false, session: session)
+        end
+        nil
+      end
+
+      # Load the stages listed in `meta["paramMap"]["stageUids"]`, in order.
+      # @return [Array<Params>]
+      def load_stages(path, meta, session:)
+        uids = meta.fetch("paramMap").fetch("stageUids")
+        uids.each_with_index.map do |uid, i|
+          load_any(session, File.join(path, "stages", stage_dir_name(i, uid, uids.size)))
+        end
+      end
+
+      # Find the Ruby class for a metadata `class` value: the Spark class name
+      # (`org.apache.spark.ml.classification.LogisticRegression`), or a PySpark
+      # one (`pyspark.ml.pipeline.PipelineModel`), matched by simple name.
+      #
+      # @param name [String]
+      # @return [Class]
+      # @raise [IllegalArgumentError] when no operator matches
+      def class_for(name)
+        classes = ML.operator_classes
+        found = classes.find { |klass| klass.operator == name }
+        if found.nil? && name.start_with?("pyspark.")
+          simple = name.split(".").last
+          found = classes.find { |klass| klass.name.split("::").last == simple }
+        end
+        found or raise IllegalArgumentError, "unsupported ML class #{name}"
       end
     end
   end

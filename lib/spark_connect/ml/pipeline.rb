@@ -14,6 +14,8 @@ module SparkConnect
     #   lr = SparkConnect::ML::Classification::LogisticRegression.new(features_col: "scaled")
     #   model = SparkConnect::ML::Pipeline.new(stages: [scaler, lr]).fit(train)
     class Pipeline < Estimator
+      operator "org.apache.spark.ml.Pipeline"
+
       param :stages, :any, doc: "a list of pipeline stages"
 
       # @return [Array<Params>] the stages.
@@ -37,10 +39,9 @@ module SparkConnect
 
         stages = stages_list
         stages.each do |stage|
-          unless stage.is_a?(Estimator) || stage.is_a?(Transformer)
-            raise IllegalArgumentError,
-                  "Cannot recognize a pipeline stage of type #{stage.class}."
-          end
+          next if stage.is_a?(Estimator) || stage.is_a?(Transformer)
+
+          raise IllegalArgumentError, "Cannot recognize a pipeline stage of type #{stage.class}."
         end
         last_estimator = stages.rindex { |s| s.is_a?(Estimator) } || -1
         fitted = []
@@ -61,21 +62,25 @@ module SparkConnect
         PipelineModel.new(uid: uid, stages: fitted)
       end
 
+      # Write the pipeline in Spark's format: `metadata` plus `stages/<i>_<uid>`.
       # @api private
       def save_meta(path, overwrite:, session:)
-        Persistence.save_composite(self, path, overwrite: overwrite, session: session,
-                                               children: Persistence.stage_children(stages_list))
+        Persistence.handle_overwrite(session, path, overwrite)
+        Persistence.write_metadata(session, path, self, param_map: { "stageUids" => stages_list.map(&:uid) })
+        Persistence.save_stages(path, stages_list, session: session)
       end
 
       # @api private
       def self.load_meta(path, session:)
-        meta, children = Persistence.load_composite(path, session: session)
-        new(uid: meta.fetch("uid"), stages: children.values)
+        meta = Persistence.read_metadata(session, path)
+        new(uid: meta.fetch("uid"), stages: Persistence.load_stages(path, meta, session: session))
       end
     end
 
     # The fitted {Pipeline}: a list of fitted stages applied in order.
     class PipelineModel < Transformer
+      operator "org.apache.spark.ml.PipelineModel"
+
       param :stages, :any, doc: "a list of fitted stages"
 
       # @return [Array<Transformer>] the fitted stages.
@@ -95,14 +100,15 @@ module SparkConnect
 
       # @api private
       def save_meta(path, overwrite:, session:)
-        Persistence.save_composite(self, path, overwrite: overwrite, session: session,
-                                               children: Persistence.stage_children(stages_list))
+        Persistence.handle_overwrite(session, path, overwrite)
+        Persistence.write_metadata(session, path, self, param_map: { "stageUids" => stages_list.map(&:uid) })
+        Persistence.save_stages(path, stages_list, session: session)
       end
 
       # @api private
       def self.load_meta(path, session:)
-        meta, children = Persistence.load_composite(path, session: session)
-        new(uid: meta.fetch("uid"), stages: children.values)
+        meta = Persistence.read_metadata(session, path)
+        new(uid: meta.fetch("uid"), stages: Persistence.load_stages(path, meta, session: session))
       end
     end
   end

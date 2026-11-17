@@ -401,13 +401,20 @@ module SparkConnect
       # Write this model to `path` (overwrites when `overwrite:`).
       # @return [void]
       def save(path, overwrite: false, session: nil)
-        Persistence.save_model(self, path, overwrite: overwrite, session: ML.session_or_active(session, @session))
+        resolved = ML.session_or_active(session, @session)
+        if respond_to?(:save_meta, true)
+          Persistence.save_operator(self, path, overwrite: overwrite, session: resolved)
+        else
+          Persistence.save_model(self, path, overwrite: overwrite, session: resolved)
+        end
       end
 
       # Read a model written by {#save}.
       # @return [Model]
       def self.load(path, session: nil)
         session = ML.session_or_active(session)
+        return load_meta(path, session: session) if respond_to?(:load_meta)
+
         Persistence.load_model(self, path, session: session)
       end
 

@@ -45,7 +45,7 @@ module SparkConnect
         param :init_steps, :int, default: 2, doc: "number of steps for k-means|| initialization (> 0)"
         param :max_iter, :int, default: 20, doc: "maximum number of iterations (>= 0)"
         param :tol, :double, default: 1e-4, doc: "convergence tolerance for iterative algorithms (>= 0)"
-        param :seed, :long, default: -1_689_246_527, doc: "random seed"
+        param :seed, :long, default: SEED_DEFAULT, doc: "random seed"
         param :distance_measure, :string, default: "euclidean", doc: "distance measure: euclidean or cosine"
         param :weight_col, :string, doc: "weight column name; unset means every instance has weight 1.0"
         param :solver, :string, default: "auto", doc: "the solver algorithm for optimization"
@@ -67,7 +67,7 @@ module SparkConnect
         param :init_steps, :int, default: 2, doc: "number of steps for k-means|| initialization (> 0)"
         param :max_iter, :int, default: 20, doc: "maximum number of iterations (>= 0)"
         param :tol, :double, default: 1e-4, doc: "convergence tolerance for iterative algorithms (>= 0)"
-        param :seed, :long, default: -1_292_978_456, doc: "random seed"
+        param :seed, :long, default: SEED_DEFAULT, doc: "random seed"
         param :distance_measure, :string, default: "euclidean", doc: "distance measure: euclidean or cosine"
         param :weight_col, :string, doc: "weight column name; unset means every instance has weight 1.0"
         param :solver, :string, default: "auto", doc: "the solver algorithm for optimization"
@@ -92,7 +92,7 @@ module SparkConnect
         param :min_divisible_cluster_size, :double, default: 1.0,
                                                     doc: "minimum divisible cluster size (> 0)"
         param :max_iter, :int, default: 20, doc: "maximum number of iterations (>= 0)"
-        param :seed, :long, default: 566_573_821, doc: "random seed"
+        param :seed, :long, default: SEED_DEFAULT, doc: "random seed"
         param :distance_measure, :string, default: "euclidean", doc: "distance measure: euclidean or cosine"
         param :weight_col, :string, doc: "weight column name; unset means every instance has weight 1.0"
         param :features_col, :string, default: "features", doc: "features column name"
@@ -108,7 +108,7 @@ module SparkConnect
         param :min_divisible_cluster_size, :double, default: 1.0,
                                                     doc: "minimum divisible cluster size (> 0)"
         param :max_iter, :int, default: 20, doc: "maximum number of iterations (>= 0)"
-        param :seed, :long, default: -560_323_028, doc: "random seed"
+        param :seed, :long, default: SEED_DEFAULT, doc: "random seed"
         param :distance_measure, :string, default: "euclidean", doc: "distance measure: euclidean or cosine"
         param :weight_col, :string, doc: "weight column name; unset means every instance has weight 1.0"
         param :features_col, :string, default: "features", doc: "features column name"
@@ -128,7 +128,7 @@ module SparkConnect
         param :k, :int, default: 2, doc: "number of independent Gaussians in the mixture model"
         param :max_iter, :int, default: 100, doc: "maximum number of iterations (>= 0)"
         param :tol, :double, default: 0.01, doc: "convergence tolerance for iterative algorithms (>= 0)"
-        param :seed, :long, default: 538_009_335, doc: "random seed"
+        param :seed, :long, default: SEED_DEFAULT, doc: "random seed"
         param :aggregation_depth, :int, default: 2, doc: "suggested depth for treeAggregate (>= 2)"
         param :weight_col, :string, doc: "weight column name; unset means every instance has weight 1.0"
         param :features_col, :string, default: "features", doc: "features column name"
@@ -144,7 +144,7 @@ module SparkConnect
         param :k, :int, default: 2, doc: "number of independent Gaussians in the mixture model"
         param :max_iter, :int, default: 100, doc: "maximum number of iterations (>= 0)"
         param :tol, :double, default: 0.01, doc: "convergence tolerance for iterative algorithms (>= 0)"
-        param :seed, :long, default: 1_409_773_170, doc: "random seed"
+        param :seed, :long, default: SEED_DEFAULT, doc: "random seed"
         param :aggregation_depth, :int, default: 2, doc: "suggested depth for treeAggregate (>= 2)"
         param :weight_col, :string, doc: "weight column name; unset means every instance has weight 1.0"
         param :features_col, :string, default: "features", doc: "features column name"
@@ -165,7 +165,7 @@ module SparkConnect
 
         param :k, :int, default: 10, doc: "the number of topics (clusters) to infer (> 1)"
         param :max_iter, :int, default: 20, doc: "maximum number of iterations (>= 0)"
-        param :seed, :long, default: 1_435_876_747, doc: "random seed"
+        param :seed, :long, default: SEED_DEFAULT, doc: "random seed"
         param :checkpoint_interval, :int, default: 10,
                                           doc: "checkpoint interval (>= 1), or -1 to disable checkpointing"
         param :doc_concentration, :double_array, doc: "concentration parameter for the prior over documents"
@@ -192,7 +192,7 @@ module SparkConnect
       class LDAModel < Model
         param :k, :int, default: 10, doc: "the number of topics (clusters) to infer (> 1)"
         param :max_iter, :int, default: 20, doc: "maximum number of iterations (>= 0)"
-        param :seed, :long, doc: "random seed (the default is set by each concrete model class)"
+        param :seed, :long, default: SEED_DEFAULT, doc: "random seed (the default is set by each concrete model class)"
         param :checkpoint_interval, :int, default: 10,
                                           doc: "checkpoint interval (>= 1), or -1 to disable checkpointing"
         param :doc_concentration, :double_array, doc: "concentration parameter for the prior over documents"
@@ -214,25 +214,44 @@ module SparkConnect
         attribute :vocab_size, :int, spark_name: "vocabSize"
         method_call :log_likelihood, arg_count: 1, returns: :double, spark_name: "logLikelihood"
         method_call :log_perplexity, arg_count: 1, returns: :double, spark_name: "logPerplexity"
-        method_call :describe_topics, arg_count: 1, returns: :dataframe, spark_name: "describeTopics"
+
+        # The `topics` of the model as a DataFrame: `describeTopics(maxTermsPerTopic)`
+        # for a limit, or Spark's no-argument overload (ten terms per topic) without one.
+        #
+        # @param max_terms_per_topic [Integer, nil]
+        # @return [DataFrame]
+        def describe_topics(max_terms_per_topic = nil)
+          args = max_terms_per_topic.nil? ? [] : [max_terms_per_topic]
+          AttributeSupport.invoke(self, [AttributeSupport.method_proto("describeTopics", args)], :dataframe)
+        end
       end
 
       # An LDA model fitted with the `em` optimizer (the server keeps the distributed model).
       class DistributedLDAModel < LDAModel
         operator "org.apache.spark.ml.clustering.DistributedLDAModel"
 
-        param :seed, :long, default: 1_215_887_909, doc: "random seed"
+        param :seed, :long, default: SEED_DEFAULT, doc: "random seed"
 
         attribute :training_log_likelihood, :double, spark_name: "trainingLogLikelihood"
         attribute :log_prior, :double, spark_name: "logPrior"
         attribute :checkpoint_files, :string_array, spark_name: "getCheckpointFiles"
+
+        # The same topics as a local model (`toLocal`), with this model's params.
+        #
+        # @return [LocalLDAModel]
+        def to_local
+          info = Rpc.fetch(session, ref_id, [AttributeSupport.method_proto("toLocal", [])])
+          local = LocalLDAModel.new(uid: uid).copy_values_from(self)
+          local.attach(session, info[:obj_ref])
+          local
+        end
       end
 
       # An LDA model fitted with the `online` optimizer (the default).
       class LocalLDAModel < LDAModel
         operator "org.apache.spark.ml.clustering.LocalLDAModel"
 
-        param :seed, :long, default: 1_421_925_485, doc: "random seed"
+        param :seed, :long, default: SEED_DEFAULT, doc: "random seed"
       end
 
       # Power iteration clustering over an affinity graph. Spark's `PowerIterationClusteringWrapper`
