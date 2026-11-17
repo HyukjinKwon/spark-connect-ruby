@@ -31,6 +31,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     and `ML::Functions` (`vector_to_array`, `array_to_vector`).
   - Server ML cache lifetime: models release their server object when released
     or collected, and `ML.clean_cache` / `ML.cache_info` on Spark 4.1+.
+  - `ML::Classification::OneVsRest` and `OneVsRestModel`, run on the client as
+    PySpark does.
+  - Save and load write and read Spark's standard ML persistence format for
+    pipelines, validators and one-vs-rest models, so models move between Ruby,
+    PySpark and Scala Spark in both directions.
+  - `DistributedLDAModel#to_local` and the no-argument `describe_topics`.
+  - Every `seed` param defaults to Spark's class-derived seed, and
+    CrossValidator and TrainValidationSplit split with it, so fits are repeatable.
+    Validator fits cache their splits, use population standard deviations, and
+    run `parallelism` fits on threads.
 
 ## [0.4.0] - 2026-11-04
 

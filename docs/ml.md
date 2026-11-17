@@ -159,7 +159,13 @@ tvs.fit(train).validation_metrics
 Cross validation and train-validation split run on the client, as in PySpark:
 each fold and param map is one fit and one evaluation on the server, then the
 best map is fit on the whole dataset. Folds are a random split on a `rand`
-column seeded by `seed`, or the user's `fold_col`.
+column seeded by `seed`, or the user's `fold_col`. The `seed` default is
+Spark's: the Java hash code of the class name, so repeated fits split the data
+the same way. `parallelism` runs that many fits at once on threads.
+
+`ML::Classification::OneVsRest` reduces a multiclass problem to one binary
+classifier per class. Like PySpark's, it runs on the client: one fit per class
+on relabelled data, and a transform that picks the class with the highest score.
 
 ## Saving and loading
 
@@ -175,12 +181,21 @@ ML::PipelineModel.load("/tmp/pipeline")
 
 cv_model.save("/tmp/cv-model")
 ML::CrossValidatorModel.load("/tmp/cv-model")
+
+one_vs_rest_model.save("/tmp/ovr-model")
+ML::Classification::OneVsRestModel.load("/tmp/ovr-model")
 ```
 
-Operators and models are written by the server in Spark's own ML format
-(`MlCommand.Write` / `MlCommand.Read`), so the paths are on the server's file
-system. Pipelines and validators write a JSON metadata file and save each child
-into a subdirectory. `overwrite: true` replaces an existing path.
+Models are saved in Spark's standard ML persistence format, the same one
+PySpark and Spark Classic read and write, so a model saved from Ruby loads in
+PySpark or Scala Spark and the reverse. Paths are on the server's file system.
+Operators and models are written by the server. Pipelines, validators and
+one-vs-rest models write their `metadata` document (class, timestamp,
+sparkVersion, uid, paramMap, defaultParamMap, and `stageUids`, `avgMetrics`,
+`estimatorParamMaps`, `numClasses` as applicable), then each child in the
+subdirectory Spark uses: `stages/<index>_<uid>`, `estimator`, `evaluator`,
+`bestModel`, `subModels`, `classifier` and `model_<index>`. `overwrite: true`
+replaces an existing path.
 
 ## Statistics
 
@@ -206,7 +221,7 @@ its Spark class; the Spark name is `operator`.
 | ------ | --------- |
 | `ML::Classification` | LogisticRegression, NaiveBayes, LinearSVC, FMClassifier, MultilayerPerceptronClassifier, DecisionTreeClassifier, RandomForestClassifier, GBTClassifier, and their models |
 | `ML::Regression` | LinearRegression, GeneralizedLinearRegression, AFTSurvivalRegression, IsotonicRegression, FMRegressor, DecisionTreeRegressor, RandomForestRegressor, GBTRegressor, and their models |
-| `ML::Clustering` | KMeans, BisectingKMeans, GaussianMixture, LDA, PowerIterationClustering, and their models |
+| `ML::Clustering` | KMeans, BisectingKMeans, GaussianMixture, LDA, PowerIterationClustering, and their models (`DistributedLDAModel#to_local` converts an LDA model to a local one) |
 | `ML::Recommendation` | ALS and ALSModel |
 | `ML::FPM` | FPGrowth and FPGrowthModel, PrefixSpan |
 | `ML::Feature` | StringIndexer, OneHotEncoder, StandardScaler, MinMaxScaler, MaxAbsScaler, RobustScaler, Imputer, PCA, IDF, Word2Vec, CountVectorizer, VectorIndexer, ChiSqSelector, UnivariateFeatureSelector, VarianceThresholdSelector, QuantileDiscretizer, RFormula, TargetEncoder, MinHashLSH, BucketedRandomProjectionLSH, and their models |
