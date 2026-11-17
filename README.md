@@ -47,7 +47,10 @@ PySpark 4.3: subqueries, lateral and nearest-by joins, `zip`, `merge_into`,
 table-valued functions, `as_table` table arguments, caching with storage
 levels, session cloning, progress handlers, operation status, the TIME,
 spatial, and nanosecond timestamp types, and every built-in SQL function in
-`pyspark.sql.functions`.
+`pyspark.sql.functions`. It also runs **Spark ML** over Connect
+(`SparkConnect::ML`): every estimator, transformer and evaluator the server
+allows, models with their attributes and summaries, pipelines, cross-validation,
+save/load, and linear algebra. See the [Machine Learning guide](https://hyukjinkwon.github.io/spark-connect-ruby/ml.html).
 
 **Out of scope** are the parts of PySpark that run client-side code on the
 server or depend on Python libraries, because Spark executes such code only in
@@ -62,7 +65,6 @@ Python (or JVM) workers and has no Ruby worker:
   columnar `Arrow::Table`;
 - the UDF profiler (`spark.profile`) and artifact upload (`addArtifacts`,
   `copyFromLocalToFs`), which exist to serve UDF code;
-- the separate, experimental MLlib-over-Connect surface.
 
 Results decode through Apache Arrow into ordered, name-addressable `Row`s.
 Method names are snake_case (idiomatic Ruby) with camelCase aliases for the
@@ -163,7 +165,7 @@ spark.sql("SELECT * FROM VALUES (1), (2), (3) AS t(x) WHERE x > :min", { min: 1 
 Full documentation, including guides for every part of the API, lives at
 **<https://hyukjinkwon.github.io/spark-connect-ruby/>**.
 
-Runnable [`examples/`](examples/) cover quickstart, transformations, aggregations, joins, window functions, SQL, reading/writing, local data, and NA/stat helpers.
+Runnable [`examples/`](examples/) cover quickstart, transformations, aggregations, joins, window functions, SQL, reading/writing, local data, NA/stat helpers, and Spark ML.
 
 ## Compatibility
 

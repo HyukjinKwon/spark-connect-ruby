@@ -53,6 +53,7 @@ This gem is that client for Ruby.
 - **Catalog** (including the Spark 4.2 DDL and maintenance operations), **reader/writer** (CDC `changes`, XML, schema evolution), **NA & stat helpers**, **observations**, and **window specs**.
 - **Structured Streaming**: streaming sources/sinks, triggers (including real-time mode), output modes, watermarks, a query manager, and client-side query listeners.
 - **Declarative Pipelines** (Spark 4.1+): dataflow graphs of tables, materialized views, flows, and Auto CDC flows.
+- **Spark ML** over Connect (Spark 4.0+): estimators, transformers, models, evaluators, pipelines, cross validation, save/load, linear algebra, and `ml.stat`.
 - **Session tooling**: cloned and fresh sessions, execution progress handlers, operation status (`GetStatus`), tags, and interrupts.
 
 ## Install
@@ -105,6 +106,7 @@ spark.stop
 | [Reading & Writing]({{ "/reading-and-writing.html" | relative_url }}) | Sources, sinks, and tables |
 | [Structured Streaming]({{ "/streaming.html" | relative_url }}) | Streaming sources/sinks, triggers, query management |
 | [Declarative Pipelines]({{ "/pipelines.html" | relative_url }}) | Dataflow graphs of tables, views, and flows |
+| [Machine Learning]({{ "/ml.html" | relative_url }}) | Spark ML: fit, transform, evaluate, pipelines, and tuning |
 | [Types & Schemas]({{ "/types-and-schemas.html" | relative_url }}) | The type system and value mapping |
 | [Configuration & Errors]({{ "/configuration.html" | relative_url }}) | Runtime config, observations, error handling |
 | [API reference](https://hyukjinkwon.github.io/spark-connect-ruby/api/index.html) | Full YARD method-level documentation |

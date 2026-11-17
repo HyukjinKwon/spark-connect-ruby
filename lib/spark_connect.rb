@@ -30,6 +30,7 @@ require_relative "spark_connect/table_arg"
 require_relative "spark_connect/merge"
 require_relative "spark_connect/tvf"
 require_relative "spark_connect/session"
+require_relative "spark_connect/ml"
 
 # spark-connect is a pure-Ruby client for {https://spark.apache.org/docs/latest/spark-connect-overview.html
 # Apache Spark Connect}, the gRPC-based decoupled client-server protocol for

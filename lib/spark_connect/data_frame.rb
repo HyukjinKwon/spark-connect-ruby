@@ -955,7 +955,8 @@ module SparkConnect
     # @return [Array<Row>]
     def collect
       result = @session.client.execute_plan(@relation)
-      ArrowConverter.to_rows(result.arrow_batches)
+      rows = ArrowConverter.to_rows(result.arrow_batches)
+      ML::Linalg.convert_rows(rows, result.schema)
     end
     alias to_a collect
 
