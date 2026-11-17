@@ -51,7 +51,7 @@ A quick smoke test that the gem and its native Arrow dependency load:
 ```ruby
 require "spark-connect"
 
-puts SparkConnect::VERSION         # => the gem version, e.g. "0.4.0"
+puts SparkConnect::VERSION         # => the gem version, e.g. "0.5.0"
 puts SparkConnect::SPARK_VERSION   # => the Spark Connect protocol line, e.g. "4.3.0"
 ```
 
