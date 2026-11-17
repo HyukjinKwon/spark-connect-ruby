@@ -233,6 +233,10 @@ The complete set of operators the server accepts is listed in
 
 ## Limitations
 
+- Spark 4.1 servers refuse to fit `FPGrowth`, and `LDA` with `optimizer: "em"`,
+  while their ML cache memory control is on, which is the default. Set
+  `spark.connect.session.connectML.mlCache.memoryControl.enabled=false` on the
+  server to use them there. Spark 4.0 and 4.2 or newer allow both.
 - Models and summaries expose the members the server allows. Methods that take
   a variable number of arguments are declared with their common arity.
 - Python-only pieces of PySpark ML (`pyspark.ml.connect`, the

@@ -67,6 +67,10 @@ RSpec.describe "ML recommendation and FPM operators", if: ENV.fetch("SPARK_REMOT
   end
 
   describe "FPGrowth" do
+    before do
+      skip IntegrationHelpers::ML_MEMORY_CONTROL_SKIP if IntegrationHelpers.ml_memory_control_rejects_fits?
+    end
+
     # Four transactions: a and b co-occur in three of them, c and d in two.
     let(:transactions) do
       session.sql("SELECT * FROM VALUES (array('a', 'b', 'c')), (array('a', 'b')), (array('a', 'b', 'd')), " \

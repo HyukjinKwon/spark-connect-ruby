@@ -157,6 +157,8 @@ RSpec.describe "Spark ML persistence format", :integration, if: ENV.fetch("SPARK
 
   describe "LDA models" do
     it "converts a distributed LDA model to a local one and describes the topics without arguments" do
+      skip IntegrationHelpers::ML_MEMORY_CONTROL_SKIP if IntegrationHelpers.ml_memory_control_rejects_fits?
+
       rows = [[0.0, 1.0, 0.0, 2.0], [1.0, 0.0, 2.0, 0.0], [0.0, 2.0, 0.0, 1.0], [2.0, 0.0, 1.0, 0.0]]
       schema = types.struct(types.field("features", types.array(types.double)))
       docs = session.create_data_frame(rows.map { |v| { "features" => v } }, schema)

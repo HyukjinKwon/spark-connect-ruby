@@ -21,6 +21,8 @@ module IntegrationHelpers
     IntegrationHelpers.spark_version_at_least?(target)
   end
 
+  ML_MEMORY_CONTROL_SKIP = "Spark 4.1 refuses this fit while its ML cache memory control is on (the default)"
+
   class << self
     # {#server_spark_version_at_least?} for groups that don't include this
     # module, such as the hooks in `RSpec.configure` below.
@@ -28,6 +30,14 @@ module IntegrationHelpers
       current = session.version.split(/[.-]/).map(&:to_i)
       wanted = target.split(".").map(&:to_i)
       (current.first(wanted.size) <=> wanted) >= 0
+    end
+
+    # Spark 4.1 refuses to fit FPGrowth, and LDA with the em optimizer, while its
+    # ML cache memory control is on, which is the default
+    # (spark.connect.session.connectML.mlCache.memoryControl.enabled). Spark 4.0
+    # predates the memory control, and Spark 4.2 lifted the restriction.
+    def ml_memory_control_rejects_fits?
+      spark_version_at_least?("4.1") && !spark_version_at_least?("4.2")
     end
 
     def session

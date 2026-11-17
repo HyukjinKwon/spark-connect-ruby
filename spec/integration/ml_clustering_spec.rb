@@ -119,6 +119,8 @@ RSpec.describe SparkConnect::ML::Clustering, if: ENV.fetch("SPARK_REMOTE", nil) 
     end
 
     it "fits the em optimizer into a DistributedLDAModel with the distributed members" do
+      skip IntegrationHelpers::ML_MEMORY_CONTROL_SKIP if IntegrationHelpers.ml_memory_control_rejects_fits?
+
       model = clustering::LDA.new(k: 2, max_iter: 30, seed: 1, optimizer: "em", checkpoint_interval: -1).fit(docs)
 
       expect(model).to be_a(clustering::DistributedLDAModel)
