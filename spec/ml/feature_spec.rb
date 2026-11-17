@@ -117,7 +117,7 @@ RSpec.describe SparkConnect::ML::Feature do
     it "Word2Vec" do
       expect_defaults(FeatureOps::Word2Vec, vector_size: 100, window_size: 5, min_count: 5, max_iter: 1,
                                             step_size: 0.025, max_sentence_length: 1000)
-      expect(FeatureOps::Word2Vec.params.fetch(:seed).default?).to be(false)
+      expect(FeatureOps::Word2Vec.params.fetch(:seed).default?).to be(true)
     end
 
     it "StringIndexer, OneHotEncoder, TargetEncoder and VectorIndexer" do

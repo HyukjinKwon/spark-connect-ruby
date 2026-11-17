@@ -12,6 +12,8 @@ RSpec.describe SparkConnect::ML::Classification do
   let(:operators) do
     {
       LogisticRegression: "org.apache.spark.ml.classification.LogisticRegression",
+      OneVsRest: "org.apache.spark.ml.classification.OneVsRest",
+      OneVsRestModel: "org.apache.spark.ml.classification.OneVsRestModel",
       LogisticRegressionModel: "org.apache.spark.ml.classification.LogisticRegressionModel",
       NaiveBayes: "org.apache.spark.ml.classification.NaiveBayes",
       NaiveBayesModel: "org.apache.spark.ml.classification.NaiveBayesModel",

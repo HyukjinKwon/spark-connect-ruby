@@ -45,6 +45,11 @@ module MlSpecSupport
     end
 
     def analyze(**kw)
+      if kw.key?(:persist)
+        return Proto::AnalyzePlanResponse.new(session_id: session_id, persist: Proto::AnalyzePlanResponse::Persist.new)
+      elsif kw.key?(:unpersist)
+        return Proto::AnalyzePlanResponse.new(session_id: session_id, unpersist: Proto::AnalyzePlanResponse::Unpersist.new)
+      end
       raise NotImplementedError, "FakeMlClient does not answer #{kw.keys.first}" unless kw.key?(:spark_version)
 
       Proto::AnalyzePlanResponse.new(session_id: session_id,
